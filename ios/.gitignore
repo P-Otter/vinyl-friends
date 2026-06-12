@@ -1,0 +1,8 @@
+# Wird von XcodeGen aus project.yml generiert — nicht einchecken.
+HitsterFriends.xcodeproj/
+
+# Xcode-Artefakte
+build/
+DerivedData/
+*.xcresult
+xcuserdata/

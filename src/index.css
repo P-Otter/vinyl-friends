@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-ink text-slate-100 antialiased;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold transition disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-black hover:brightness-110 active:brightness-95;
+  }
+  .btn-ghost {
+    @apply btn bg-panel2 text-slate-100 hover:bg-panel2/70;
+  }
+  .panel {
+    @apply rounded-2xl bg-panel p-6 shadow-lg shadow-black/30;
+  }
+  .field-label {
+    @apply mb-2 block text-sm font-semibold uppercase tracking-wide text-slate-400;
+  }
+}

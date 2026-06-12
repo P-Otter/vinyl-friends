@@ -1,0 +1,50 @@
+[
+  {
+    "id": "soundtracks",
+    "name": "Filmsoundtracks",
+    "emoji": "🎬",
+    "playlistId": "37i9dQZF1DX1tz6EDao8it"
+  },
+  {
+    "id": "disney",
+    "name": "Disney / Animation",
+    "emoji": "🏰",
+    "playlistId": "37i9dQZF1DX8C9xQcOrE6T"
+  },
+  {
+    "id": "70s",
+    "name": "70er Klassiker",
+    "emoji": "🕺",
+    "playlistId": "37i9dQZF1DWTJ7xPn4vNaz"
+  },
+  {
+    "id": "80s",
+    "name": "80er Pop",
+    "emoji": "📼",
+    "playlistId": "37i9dQZF1DX4UtSsGT1Sbe"
+  },
+  {
+    "id": "90s-hiphop",
+    "name": "90er Hip-Hop",
+    "emoji": "🎤",
+    "playlistId": "37i9dQZF1DX186v583rmzp"
+  },
+  {
+    "id": "2000s-indie",
+    "name": "2000er Indie",
+    "emoji": "🎸",
+    "playlistId": "37i9dQZF1DX1MUPbVKMgJE"
+  },
+  {
+    "id": "eurodance",
+    "name": "Eurodance",
+    "emoji": "💿",
+    "playlistId": "37i9dQZF1DWXbDckdgs6lN"
+  },
+  {
+    "id": "deutsche-hits",
+    "name": "Deutsche Hits",
+    "emoji": "🇩🇪",
+    "playlistId": "37i9dQZF1DX0Rbma8FxLak"
+  }
+]

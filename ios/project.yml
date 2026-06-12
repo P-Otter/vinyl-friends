@@ -1,0 +1,24 @@
+name: HitsterFriends
+options:
+  bundleIdPrefix: com.shasha
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+targets:
+  HitsterFriends:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: Hitster Friends
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSAppleMusicUsageDescription: Wird für die Apple-Music-Wiedergabe im Spiel benötigt.
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.9"

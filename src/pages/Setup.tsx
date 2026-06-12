@@ -1,0 +1,198 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useGameState } from '../hooks/useGameState';
+import { useAuth } from '../auth-context';
+import PlaylistPicker from '../components/PlaylistPicker';
+import ThemeChips from '../components/ThemeChips';
+import MixSlider from '../components/MixSlider';
+import type { GameMode } from '../types';
+
+const MODES: { id: GameMode; label: string; available: boolean }[] = [
+  { id: 'classic-relative', label: 'Klassisch — Reihenfolge (ohne Jahre)', available: true },
+  { id: 'whose-fave', label: 'Wessen Liebling? / Wer errät ihn zuerst?', available: false },
+  { id: 'name-that-tune', label: 'Artist & Titel raten', available: false },
+];
+
+export default function Setup() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { settings, setSettings } = useGameState();
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const winN = settings.winCondition.type === 'cards' ? settings.winCondition.n : 10;
+  const canContinue = Boolean(settings.friendsPlaylistId);
+
+  const toggleTheme = (id: string) => {
+    const enabled = settings.enabledThemes.includes(id)
+      ? settings.enabledThemes.filter((t) => t !== id)
+      : [...settings.enabledThemes, id];
+    setSettings({ enabledThemes: enabled });
+  };
+
+  return (
+    <div className="space-y-6">
+      <header className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Setup</h1>
+        <div className="text-right text-sm text-slate-400">
+          {user?.display_name ?? 'Spotify'} ·{' '}
+          <button className="underline hover:text-slate-200" onClick={logout}>
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <section className="panel space-y-3">
+        <label className="field-label">Friends-Playlist</label>
+        <PlaylistPicker
+          value={settings.friendsPlaylistId}
+          onChange={(id, name) =>
+            setSettings({ friendsPlaylistId: id, friendsPlaylistName: name })
+          }
+        />
+        <p className="text-xs text-slate-500">
+          Tipp: eine <i>collaborative</i> Playlist nehmen, zu der alle ihre Lieblingssongs
+          hinzufügen.
+        </p>
+      </section>
+
+      <section className="panel space-y-4">
+        <div>
+          <label className="field-label">Themes dazumischen (optional)</label>
+          <ThemeChips enabled={settings.enabledThemes} onToggle={toggleTheme} />
+        </div>
+        <div>
+          <label className="field-label">Mischverhältnis</label>
+          <MixSlider
+            value={settings.friendsRatio}
+            onChange={(v) => setSettings({ friendsRatio: v })}
+            disabled={settings.enabledThemes.length === 0}
+          />
+          {settings.enabledThemes.length === 0 && (
+            <p className="mt-1 text-xs text-slate-500">
+              Aktiviere ein Theme, um den Mix zu nutzen — sonst spielen nur Friends-Songs.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="panel space-y-3">
+        <label className="field-label">Modus</label>
+        {MODES.map((m) => (
+          <label
+            key={m.id}
+            className={
+              'flex items-center gap-3 rounded-lg px-2 py-1 ' +
+              (m.available ? 'cursor-pointer' : 'cursor-not-allowed opacity-50')
+            }
+          >
+            <input
+              type="radio"
+              name="mode"
+              className="accent-accent"
+              checked={settings.mode === m.id || (m.id === 'classic-relative' && settings.mode === 'classic-year')}
+              disabled={!m.available}
+              onChange={() => m.available && setSettings({ mode: m.id })}
+            />
+            <span>{m.label}</span>
+            {!m.available && (
+              <span className="rounded bg-panel2 px-2 py-0.5 text-xs text-slate-400">V1</span>
+            )}
+          </label>
+        ))}
+      </section>
+
+      <section className="panel space-y-3">
+        <label className="field-label">Win-Condition</label>
+        <div className="flex items-center gap-2">
+          Erste*r mit
+          <input
+            type="number"
+            min={3}
+            max={30}
+            value={winN}
+            onChange={(e) =>
+              setSettings({ winCondition: { type: 'cards', n: Number(e.target.value) } })
+            }
+            className="w-20 rounded-lg bg-panel2 px-3 py-2 text-center"
+          />
+          Karten gewinnt
+        </div>
+      </section>
+
+      <section className="panel">
+        <button
+          className="field-label flex w-full items-center justify-between"
+          onClick={() => setShowAdvanced((v) => !v)}
+        >
+          <span>⚙ Mehr Einstellungen</span>
+          <span>{showAdvanced ? '▴' : '▾'}</span>
+        </button>
+        {showAdvanced && (
+          <div className="mt-4 space-y-4 text-sm">
+            <label className="flex items-center justify-between">
+              <span>
+                Jahres-Modus (absolute Jahre, ±{settings.yearTolerance}-Toleranz)
+              </span>
+              <input
+                type="checkbox"
+                className="accent-accent"
+                checked={settings.mode === 'classic-year'}
+                onChange={(e) =>
+                  setSettings({ mode: e.target.checked ? 'classic-year' : 'classic-relative' })
+                }
+              />
+            </label>
+            <label className="flex items-center justify-between">
+              <span>Spread-Boost (Themes strecken die Timeline)</span>
+              <input
+                type="checkbox"
+                className="accent-accent"
+                checked={settings.spreadBoost}
+                onChange={(e) => setSettings({ spreadBoost: e.target.checked })}
+              />
+            </label>
+            <label className="flex items-center justify-between">
+              <span>Random Start-Offset (verhindert Intro-Erkennung)</span>
+              <input
+                type="checkbox"
+                className="accent-accent"
+                checked={settings.randomOffset}
+                onChange={(e) => setSettings({ randomOffset: e.target.checked })}
+              />
+            </label>
+            <label className="flex items-center justify-between">
+              <span>Explicit-Songs erlauben</span>
+              <input
+                type="checkbox"
+                className="accent-accent"
+                checked={settings.allowExplicit}
+                onChange={(e) => setSettings({ allowExplicit: e.target.checked })}
+              />
+            </label>
+            <label className="flex items-center justify-between gap-3">
+              <span>Min. Songlänge (Sek.)</span>
+              <input
+                type="number"
+                min={0}
+                max={300}
+                value={settings.minTrackLengthSec}
+                onChange={(e) => setSettings({ minTrackLengthSec: Number(e.target.value) })}
+                className="w-20 rounded-lg bg-panel2 px-3 py-1 text-center"
+              />
+            </label>
+          </div>
+        )}
+      </section>
+
+      <div className="flex justify-end">
+        <button
+          className="btn-primary"
+          disabled={!canContinue}
+          onClick={() => navigate('/players')}
+        >
+          Weiter → Spieler
+        </button>
+      </div>
+    </div>
+  );
+}
