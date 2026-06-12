@@ -18,6 +18,10 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSAppleMusicUsageDescription: Wird für die Apple-Music-Wiedergabe im Spiel benötigt.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.shasha.HitsterFriends
+            CFBundleURLSchemes:
+              - hitsterfriends
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1,2"

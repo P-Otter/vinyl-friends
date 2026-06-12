@@ -11,7 +11,14 @@ struct PlayerSetupView: View {
     @State private var errorMessage: String?
     @State private var gameStarted = false
 
+    // Spotify: Playlist-Auswahl
+    @State private var playlists: [SpotifyPlaylist] = []
+    @State private var playlistsLoading = false
+    @State private var selectedPlaylist: SpotifyPlaylist?
+
     private var t: AppTheme { themeStore.theme }
+
+    private var spotify: SpotifyProvider? { music.provider as? SpotifyProvider }
 
     private var validNames: [String] {
         names
@@ -25,6 +32,9 @@ struct PlayerSetupView: View {
 
             ScrollView {
                 VStack(spacing: 20) {
+                    if spotify != nil {
+                        playlistCard
+                    }
                     playersCard
                     goalCard
                     startButton
@@ -43,6 +53,68 @@ struct PlayerSetupView: View {
         .navigationDestination(isPresented: $gameStarted) { GameView() }
         .onAppear {
             if music.provider == nil { music.provider = DemoProvider() }
+        }
+        .task {
+            await loadPlaylistsIfNeeded()
+        }
+    }
+
+    private var playlistCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("SPOTIFY-PLAYLIST")
+                .font(.caption.weight(.black))
+                .tracking(2)
+                .foregroundStyle(t.textMuted)
+
+            if playlistsLoading {
+                ProgressView().frame(maxWidth: .infinity)
+            } else if playlists.isEmpty {
+                Text("Keine Playlists gefunden.")
+                    .font(.subheadline)
+                    .foregroundStyle(t.textMuted)
+            } else {
+                Menu {
+                    ForEach(playlists) { playlist in
+                        Button("\(playlist.name) (\(playlist.trackCount))") {
+                            selectedPlaylist = playlist
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "music.note.list")
+                        Text(selectedPlaylist?.name ?? "Playlist wählen …")
+                            .font(.body.weight(.bold))
+                            .lineLimit(1)
+                        Spacer()
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption.weight(.bold))
+                    }
+                    .foregroundStyle(t.text)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(t.background.opacity(0.6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(t.surfaceStroke.opacity(0.7), lineWidth: max(t.strokeWidth * 0.6, 1))
+                            )
+                    )
+                }
+            }
+        }
+        .padding(18)
+        .themedCard()
+    }
+
+    private func loadPlaylistsIfNeeded() async {
+        guard let spotify, playlists.isEmpty else { return }
+        playlistsLoading = true
+        defer { playlistsLoading = false }
+        do {
+            playlists = try await spotify.myPlaylists()
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -141,11 +213,12 @@ struct PlayerSetupView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(validNames.count < 2 || isLoading)
+        .disabled(validNames.count < 2 || isLoading || (spotify != nil && selectedPlaylist == nil))
     }
 
     private func start() async {
         guard let provider = music.provider else { return }
+        if let spotify { spotify.selectedPlaylist = selectedPlaylist }
         isLoading = true
         defer { isLoading = false }
 

@@ -5,6 +5,10 @@ struct HomeView: View {
     @EnvironmentObject private var music: MusicSession
     @EnvironmentObject private var themeStore: ThemeStore
 
+    @State private var goToSetup = false
+    @State private var spotifyBusy = false
+    @State private var spotifyError: String?
+
     private var t: AppTheme { themeStore.theme }
 
     var body: some View {
@@ -41,28 +45,73 @@ struct HomeView: View {
 
                     themePicker
 
-                    NavigationLink {
-                        PlayerSetupView()
+                    Button {
+                        startSpotify()
                     } label: {
-                        Label("Los geht's!", systemImage: "play.fill")
-                            .font(.title3.weight(.black))
-                            .foregroundStyle(t.onAccent)
+                        Group {
+                            if spotifyBusy {
+                                ProgressView().tint(t.onAccent)
+                            } else {
+                                Label("Mit Spotify spielen", systemImage: "music.note")
+                                    .font(.title3.weight(.black))
+                            }
+                        }
+                        .foregroundStyle(t.onAccent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            Capsule()
+                                .fill(t.ctaStyle)
+                                .themedShadow(t)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(spotifyBusy)
+
+                    Button {
+                        music.provider = DemoProvider()
+                        goToSetup = true
+                    } label: {
+                        Label("Demo-Modus (ohne Account)", systemImage: "sparkles")
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(t.text)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
+                            .padding(.vertical, 13)
                             .background(
                                 Capsule()
-                                    .fill(t.ctaStyle)
-                                    .themedShadow(t)
+                                    .fill(t.surface)
+                                    .overlay(Capsule().stroke(t.surfaceStroke, lineWidth: max(t.strokeWidth, 1)))
                             )
                     }
                     .buttonStyle(.plain)
 
-                    Label("Demo-Modus mit 30s-Hörproben — ohne Account", systemImage: "sparkles")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(t.textMuted.opacity(0.8))
-                        .padding(.bottom, 6)
+                    if let spotifyError {
+                        Text(spotifyError)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(t.bad)
+                            .multilineTextAlignment(.center)
+                    }
                 }
                 .padding(24)
+            }
+            .navigationDestination(isPresented: $goToSetup) { PlayerSetupView() }
+        }
+    }
+
+    private func startSpotify() {
+        spotifyError = nil
+        spotifyBusy = true
+        Task {
+            defer { spotifyBusy = false }
+            let provider = (music.provider as? SpotifyProvider) ?? SpotifyProvider()
+            do {
+                if !provider.isAuthorized {
+                    try await provider.authorize()
+                }
+                music.provider = provider
+                goToSetup = true
+            } catch {
+                spotifyError = error.localizedDescription
             }
         }
     }
