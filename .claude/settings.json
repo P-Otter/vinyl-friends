@@ -3,7 +3,23 @@
     "allow": [
       "Bash(cat)",
       "Bash(swift /tmp/wintest.swift)",
-      "Bash(rm -f /tmp/wintest.swift)"
+      "Bash(rm -f /tmp/wintest.swift)",
+      "WebSearch",
+      "WebFetch(domain:tmdb.eu)",
+      "WebFetch(domain:www.whois.com)",
+      "WebFetch(domain:www.collinsdictionary.com)",
+      "WebFetch(domain:tonleiter.com.domainsdata.org)",
+      "WebFetch(domain:dejatune.vercel.app)",
+      "WebFetch(domain:www.namecheap.com)",
+      "Bash(whois tonjahr.com)",
+      "WebFetch(domain:rdap.verisign.com)",
+      "WebFetch(domain:www.trademarkelite.com)",
+      "WebFetch(domain:www.groovelstudio.com)",
+      "WebFetch(domain:apps.apple.com)",
+      "WebFetch(domain:en.wiktionary.org)",
+      "WebFetch(domain:www.dekado.de)",
+      "Bash(nslookup songjaeger.com)",
+      "Bash(curl -s --max-time 20 \"https://rdap.verisign.com/com/v1/domain/songjaeger.com\")"
     ]
   }
 }

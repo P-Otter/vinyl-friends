@@ -31,7 +31,7 @@ struct HomeView: View {
                             .padding(.bottom, 6)
                     }
 
-                    Text(t.uppercaseTitles ? "HITSTER FRIENDS" : "Hitster Friends")
+                    Text(t.uppercaseTitles ? "VINYL FRIENDS" : "Vinyl Friends")
                         .font(.system(size: t.uppercaseTitles ? 32 : 40, weight: t.titleWeight, design: t.fontDesign))
                         .tracking(t.uppercaseTitles ? 1.5 : 0)
                         .foregroundStyle(t.gradient.isEmpty ? AnyShapeStyle(t.text) : t.ctaStyle)

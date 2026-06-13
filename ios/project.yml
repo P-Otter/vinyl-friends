@@ -13,8 +13,9 @@ targets:
     info:
       path: Info.plist
       properties:
-        CFBundleDisplayName: Hitster Friends
-        UILaunchScreen: {}
+        CFBundleDisplayName: Vinyl Friends
+        UILaunchScreen:
+          UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSAppleMusicUsageDescription: Wird für die Apple-Music-Wiedergabe im Spiel benötigt.
@@ -26,3 +27,4 @@ targets:
       base:
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_VERSION: "5.9"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

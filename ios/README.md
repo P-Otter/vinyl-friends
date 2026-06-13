@@ -1,4 +1,4 @@
-# Hitster Friends — iOS-App
+# Vinyl Friends — iOS-App
 
 Natives SwiftUI-Spiel: Hör den Song, schätze das Erscheinungsjahr, bau deine Zeitleiste.
 Der **Demo-Modus** läuft ohne Spotify-/Apple-Music-Account (30s-Hörproben über die iTunes-API).
