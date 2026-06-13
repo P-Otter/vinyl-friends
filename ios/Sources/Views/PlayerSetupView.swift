@@ -9,6 +9,9 @@ struct PlayerSetupView: View {
     @State private var targetCards = 5
     @State private var snippetSeconds = 20
     @State private var cardLook: TimelineCardStyle = .classic
+    @State private var bonusEnabled = true
+    @State private var masteryThreshold = 2
+    @State private var requiredMastered = 3
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var gameStarted = false
@@ -39,6 +42,7 @@ struct PlayerSetupView: View {
                     }
                     playersCard
                     goalCard
+                    bonusCard
                     cardLookCard
                     startButton
                     if let errorMessage {
@@ -207,6 +211,56 @@ struct PlayerSetupView: View {
         .themedCard()
     }
 
+    private var bonusCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: $bonusEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Raten (Bonus)")
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(t.text)
+                    Text("Nach Platzieren Titel/Artist/Jahr raten")
+                        .font(.caption2)
+                        .foregroundStyle(t.textMuted)
+                }
+            }
+            .tint(t.highlight)
+
+            if bonusEnabled {
+                Divider().overlay(t.surfaceStroke.opacity(0.3))
+                HStack {
+                    Text("Gemeistert ab")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(t.text)
+                    Spacer()
+                    Picker("", selection: $masteryThreshold) {
+                        Text("2 von 3").tag(2)
+                        Text("alle 3").tag(3)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 150)
+                }
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(requiredMastered) gemeistert zum Sieg")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(t.text)
+                        Text("zusätzlich zu \(targetCards) Karten")
+                            .font(.caption2)
+                            .foregroundStyle(t.textMuted)
+                    }
+                    Spacer()
+                    Stepper("", value: $requiredMastered, in: 1...targetCards)
+                        .labelsHidden()
+                }
+            }
+        }
+        .padding(18)
+        .themedCard()
+        .onChange(of: targetCards) { _, newValue in
+            if requiredMastered > newValue { requiredMastered = newValue }
+        }
+    }
+
     private var cardLookCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("KARTEN-STIL")
@@ -284,6 +338,9 @@ struct PlayerSetupView: View {
         engine.settings.winCondition = .cards(targetCards)
         engine.settings.snippetSeconds = snippetSeconds
         engine.settings.cardLook = cardLook
+        engine.settings.bonusEnabled = bonusEnabled
+        engine.settings.masteryThreshold = masteryThreshold
+        engine.settings.requiredMastered = bonusEnabled ? requiredMastered : 0
 
         do {
             let queue = try await provider.loadTracks(settings: engine.settings)

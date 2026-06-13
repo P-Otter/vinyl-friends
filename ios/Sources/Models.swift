@@ -29,6 +29,8 @@ struct Player: Codable, Hashable, Identifiable {
     var cards: [Track] = []
     var attempts: Int = 0
     var hits: Int = 0
+    // Karten, bei denen der Bonus (Titel/Artist/Jahr) ausreichend erraten wurde.
+    var masteredCount: Int = 0
 }
 
 enum WinCondition: Codable, Hashable {
@@ -46,10 +48,32 @@ struct GameSettings: Codable, Hashable {
     // erlauben später mehr.
     var snippetSeconds: Int = 20
     var cardLook: TimelineCardStyle = .classic
+
+    // Bonus-Raten nach korrektem Platzieren.
+    var bonusEnabled: Bool = true
+    // Wie viele von {Jahr, Titel, Artist} müssen stimmen, damit eine Karte als
+    // „gemeistert" zählt (2 = leichter, 3 = alle).
+    var masteryThreshold: Int = 2
+    // So viele gemeisterte Karten braucht man zusätzlich zur Kartenzahl zum Sieg.
+    var requiredMastered: Int = 3
+    // ± Jahre, innerhalb derer eine Jahresschätzung als richtig gilt.
+    var yearTolerance: Int = 2
 }
 
 enum GamePhase: String, Codable {
-    case setup, playing, reveal, finished
+    case setup, playing, bonus, reveal, finished
+}
+
+/// Ergebnis des Bonus-Ratens (Titel/Artist/Jahr) zu einer platzierten Karte.
+struct BonusResult: Codable, Hashable {
+    var titleCorrect: Bool
+    var artistCorrect: Bool
+    var yearCorrect: Bool
+    var titleGuess: String
+    var artistGuess: String
+    var yearGuess: Int
+    var correctCount: Int { (titleCorrect ? 1 : 0) + (artistCorrect ? 1 : 0) + (yearCorrect ? 1 : 0) }
+    var mastered: Bool
 }
 
 /// Optik der Timeline-Karten — im Setup wählbar.
@@ -71,4 +95,5 @@ struct PlacementResult: Codable, Hashable {
     var playerId: UUID
     var insertIndex: Int
     var correct: Bool
+    var bonus: BonusResult?
 }

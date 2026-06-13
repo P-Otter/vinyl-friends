@@ -52,5 +52,21 @@ struct HitsterFriendsApp: App {
         // Dem ersten Spieler ein paar Karten geben, damit die Timeline gefüllt aussieht.
         let seedYears = [1975, 1991, 2014]
         engine.players[0].cards = DemoCatalog.tracks.filter { seedYears.contains($0.releaseYear) }
+
+        // Für Screenshots direkt in die Bonus-Phase: aktuellen Track korrekt platzieren.
+        if args.contains("-demoBonus") || args.contains("-demoReveal") {
+            let sorted = Scoring.sortByYear(engine.players[0].cards)
+            if let track = engine.currentTrack {
+                for idx in 0...sorted.count
+                where Scoring.isPlacementCorrect(sorted: sorted, track: track, insertIndex: idx) {
+                    engine.placeCard(insertIndex: idx)
+                    break
+                }
+                if args.contains("-demoReveal") {
+                    // Titel + Jahr richtig, Artist falsch → 2/3 → gemeistert.
+                    engine.submitBonus(title: track.name, artist: "Irgendwer", year: track.releaseYear)
+                }
+            }
+        }
     }
 }

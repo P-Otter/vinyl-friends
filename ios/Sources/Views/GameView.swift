@@ -52,6 +52,11 @@ struct GameView: View {
                 gameBody
             }
 
+            if engine.phase == .bonus {
+                BonusGuessView()
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+
             if engine.phase == .reveal, let result = engine.lastResult {
                 RevealOverlay(result: result) {
                     stopPlayback()
@@ -142,6 +147,11 @@ struct GameView: View {
                         .lineLimit(1)
                     Text(String(player.cards.count))
                         .font(.caption.weight(.black).monospacedDigit())
+                    if engine.settings.bonusEnabled {
+                        Text("★\(player.masteredCount)")
+                            .font(.system(size: 9, weight: .black).monospacedDigit())
+                            .foregroundStyle(isActive ? t.onAccent.opacity(0.8) : t.highlight)
+                    }
                 }
                 .foregroundStyle(isActive ? t.onAccent : t.text)
                 .padding(.horizontal, 11)

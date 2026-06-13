@@ -40,6 +40,7 @@ final class GameEngine: ObservableObject {
             players[i].cards = []
             players[i].attempts = 0
             players[i].hits = 0
+            players[i].masteredCount = 0
         }
         phase = .playing
     }
@@ -56,6 +57,38 @@ final class GameEngine: ObservableObject {
         }
         players[currentPlayerIdx] = player
         lastResult = PlacementResult(track: track, playerId: player.id, insertIndex: insertIndex, correct: correct)
+        // Bei korrektem Platzieren erst blind raten (Bonus), sonst direkt auflösen.
+        phase = (correct && settings.bonusEnabled) ? .bonus : .reveal
+    }
+
+    /// Bonus-Rateergebnis auswerten (Titel/Artist toleranter Vergleich, Jahr ±Toleranz).
+    func submitBonus(title: String, artist: String, year: Int) {
+        guard var result = lastResult, let track = currentTrack else { return }
+        let titleOK = FuzzyMatch.matches(title, track.name)
+        let artistOK = FuzzyMatch.matchesArtist(artist, track.artist)
+        let yearOK = abs(year - track.releaseYear) <= settings.yearTolerance
+        let count = (titleOK ? 1 : 0) + (artistOK ? 1 : 0) + (yearOK ? 1 : 0)
+        let mastered = count >= settings.masteryThreshold
+        result.bonus = BonusResult(
+            titleCorrect: titleOK, artistCorrect: artistOK, yearCorrect: yearOK,
+            titleGuess: title, artistGuess: artist, yearGuess: year, mastered: mastered
+        )
+        lastResult = result
+        if mastered, let idx = players.firstIndex(where: { $0.id == result.playerId }) {
+            players[idx].masteredCount += 1
+        }
+        phase = .reveal
+    }
+
+    /// Bonus übersprungen — Karte zählt nicht als gemeistert.
+    func skipBonus() {
+        if var result = lastResult {
+            result.bonus = BonusResult(
+                titleCorrect: false, artistCorrect: false, yearCorrect: false,
+                titleGuess: "", artistGuess: "", yearGuess: 0, mastered: false
+            )
+            lastResult = result
+        }
         phase = .reveal
     }
 
@@ -63,7 +96,9 @@ final class GameEngine: ObservableObject {
         let won: Bool
         switch settings.winCondition {
         case .cards(let n):
-            won = players.contains { $0.cards.count >= n }
+            // Sieg = genug Karten UND (bei Bonus) genug gemeisterte Karten.
+            let needMastered = settings.bonusEnabled ? settings.requiredMastered : 0
+            won = players.contains { $0.cards.count >= n && $0.masteredCount >= needMastered }
         case .time(let minutes):
             won = startedAt.map { Date().timeIntervalSince($0) >= Double(minutes) * 60 } ?? false
         }
@@ -103,6 +138,7 @@ final class GameEngine: ObservableObject {
             players[i].cards = []
             players[i].attempts = 0
             players[i].hits = 0
+            players[i].masteredCount = 0
         }
     }
 }
