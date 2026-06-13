@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Sammelt die Bildschirm-Rahmen der Timeline-Lücken, damit der Drag erkennt,
 /// über welcher Lücke der Finger gerade ist.
@@ -7,6 +8,12 @@ private struct GapFramePreference: PreferenceKey {
     static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
         value.merge(nextValue()) { _, new in new }
     }
+}
+
+/// Heimatrahmen der Mystery-Karte, damit sie beim Loslassen in die Lücke fliegen kann.
+private struct MysteryFramePreference: PreferenceKey {
+    static let defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
 }
 
 struct GameView: View {
@@ -28,7 +35,9 @@ struct GameView: View {
     // Drag der Mystery-Karte
     @State private var dragOffset: CGSize = .zero
     @State private var isDragging = false
+    @State private var isLanding = false
     @State private var gapFrames: [Int: CGRect] = [:]
+    @State private var mysteryHome: CGRect = .zero
 
     private let boardSpace = "board"
 
@@ -69,6 +78,7 @@ struct GameView: View {
         }
         .coordinateSpace(name: boardSpace)
         .onPreferenceChange(GapFramePreference.self) { gapFrames = $0 }
+        .onPreferenceChange(MysteryFramePreference.self) { mysteryHome = $0 }
         .onReceive(ticker) { _ in tick() }
         .navigationBarBackButtonHidden(true)
         .overlay(alignment: .topLeading) { quitButton }
@@ -273,11 +283,13 @@ struct GameView: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(t.highlight.opacity(isTargeted ? 0.3 : 0.0))
             )
-            .frame(width: isTargeted ? 92 : 44, height: 112)
+            .frame(width: isTargeted ? 96 : 44, height: 112)
+            .shadow(color: isTargeted ? t.highlight.opacity(0.6) : .clear, radius: 14)
             .overlay(
-                Image(systemName: "arrow.down")
-                    .font(.headline.bold())
+                Image(systemName: isTargeted ? "arrow.down.circle.fill" : "arrow.down")
+                    .font(.title3.bold())
                     .foregroundStyle(isTargeted ? t.highlight : t.text.opacity(0.4))
+                    .scaleEffect(isTargeted ? 1.15 : 1)
             )
             .background(
                 GeometryReader { geo in
@@ -313,10 +325,20 @@ struct GameView: View {
             isMystery: true,
             size: CGSize(width: 96, height: 116)
         )
-        .scaleEffect(isDragging ? 1.12 : 1)
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(
+                    key: MysteryFramePreference.self,
+                    value: geo.frame(in: .named(boardSpace))
+                )
+            }
+        )
+        .scaleEffect(isLanding ? 0.42 : (isDragging ? 1.12 : 1))
         .rotationEffect(.degrees(isDragging ? -4 : 0))
+        .opacity(isLanding ? 0 : 1)
+        .shadow(color: isDragging ? .black.opacity(0.3) : .clear, radius: 16, y: 8)
         .offset(dragOffset)
-        .zIndex(isDragging ? 20 : 0)
+        .zIndex(isDragging || isLanding ? 20 : 0)
         .gesture(dragGesture)
         .animation(.spring(duration: 0.3), value: isDragging)
         .padding(.bottom, 4)
@@ -331,20 +353,39 @@ struct GameView: View {
                     $0.value.insetBy(dx: -6, dy: -60).contains(value.location)
                 }?.key
                 if hit != targetedGap {
+                    if hit != nil { haptic(.light) }
                     withAnimation(.spring(duration: 0.25)) { targetedGap = hit }
                 }
             }
             .onEnded { _ in
                 let gap = targetedGap
                 isDragging = false
-                if let gap {
-                    dragOffset = .zero
-                    place(at: gap)
+                if let gap, let gf = gapFrames[gap], mysteryHome != .zero {
+                    haptic(.medium)
+                    // Karte in die Lücke fliegen lassen, dann platzieren.
+                    let target = CGSize(
+                        width: gf.midX - mysteryHome.midX,
+                        height: gf.midY - mysteryHome.midY
+                    )
+                    withAnimation(.spring(duration: 0.4, bounce: 0.2)) {
+                        dragOffset = target
+                        isLanding = true
+                    }
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(0.38))
+                        place(at: gap)
+                        dragOffset = .zero
+                        isLanding = false
+                    }
                 } else {
                     withAnimation(.spring(duration: 0.45, bounce: 0.4)) { dragOffset = .zero }
                     targetedGap = nil
                 }
             }
+    }
+
+    private func haptic(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        UIImpactFeedbackGenerator(style: style).impactOccurred()
     }
 
     // MARK: Aktionen
