@@ -189,6 +189,7 @@ struct GameView: View {
 
             HStack(spacing: 28) {
                 playButton
+                    .opacity(AppConfig.iTunesPreviewEnabled ? 1 : 0.35)
                 Button {
                     stopPlayback()
                     engine.skipTrack()
@@ -206,7 +207,11 @@ struct GameView: View {
                 .buttonStyle(.plain)
             }
 
-            if let playbackError {
+            if !AppConfig.iTunesPreviewEnabled {
+                Label("Vorschau aus (Killswitch)", systemImage: "speaker.slash.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(t.textMuted)
+            } else if let playbackError {
                 Text(playbackError)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(t.bad)
@@ -414,6 +419,7 @@ struct GameView: View {
     }
 
     private func togglePlay() {
+        guard AppConfig.iTunesPreviewEnabled else { return } // Killswitch
         guard let provider = music.provider, let track = engine.currentTrack else { return }
         playbackError = nil
         if isPlaying {

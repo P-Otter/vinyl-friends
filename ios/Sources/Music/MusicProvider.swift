@@ -4,12 +4,15 @@ import Foundation
 
 enum MusicProviderError: LocalizedError {
     case previewNotFound(String)
+    case previewDisabled
     case notImplemented(String)
 
     var errorDescription: String? {
         switch self {
         case .previewNotFound(let track):
             return "Keine Hörprobe gefunden für „\(track)“."
+        case .previewDisabled:
+            return "Vorschau ist aus (Killswitch)."
         case .notImplemented(let provider):
             return "\(provider) ist noch nicht angebunden."
         }

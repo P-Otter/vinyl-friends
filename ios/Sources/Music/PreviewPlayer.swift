@@ -10,6 +10,10 @@ final class PreviewPlayer {
     private var cache: [String: URL] = [:]
 
     func play(artist: String, title: String, cacheKey: String) async throws {
+        // Kill-Switch: keine iTunes-Abfrage, keine Wiedergabe.
+        guard AppConfig.iTunesPreviewEnabled else {
+            throw MusicProviderError.previewDisabled
+        }
         let url = try await previewURL(artist: artist, title: title, cacheKey: cacheKey)
         try? AVAudioSession.sharedInstance().setCategory(.playback)
         try? AVAudioSession.sharedInstance().setActive(true)
