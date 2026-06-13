@@ -43,6 +43,11 @@ struct HitsterFriendsApp: App {
             Player(name: "Mia", colorHex: colors[2]),
         ]
         engine.settings.winCondition = .cards(5)
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "-cardLook"), i + 1 < args.count,
+           let look = TimelineCardStyle(rawValue: args[i + 1]) {
+            engine.settings.cardLook = look
+        }
         engine.startGame(queue: DemoCatalog.tracks.shuffled())
         // Dem ersten Spieler ein paar Karten geben, damit die Timeline gefüllt aussieht.
         let seedYears = [1975, 1991, 2014]

@@ -45,10 +45,24 @@ struct GameSettings: Codable, Hashable {
     // 30s-Vorschauen begrenzen das nach oben; volle Songs (Spotify auf dem Gerät)
     // erlauben später mehr.
     var snippetSeconds: Int = 20
+    var cardLook: TimelineCardStyle = .classic
 }
 
 enum GamePhase: String, Codable {
     case setup, playing, reveal, finished
+}
+
+/// Optik der Timeline-Karten — im Setup wählbar.
+enum TimelineCardStyle: String, Codable, CaseIterable, Identifiable {
+    case classic, vinyl, shelf
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .classic: return "Klassisch"
+        case .vinyl: return "Mini-Platte"
+        case .shelf: return "Plattenregal"
+        }
+    }
 }
 
 // Ergebnis einer Platzierung, fürs Reveal-Overlay festgehalten.

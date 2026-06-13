@@ -8,6 +8,7 @@ struct PlayerSetupView: View {
     @State private var names: [String] = ["", ""]
     @State private var targetCards = 5
     @State private var snippetSeconds = 20
+    @State private var cardLook: TimelineCardStyle = .classic
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var gameStarted = false
@@ -38,6 +39,7 @@ struct PlayerSetupView: View {
                     }
                     playersCard
                     goalCard
+                    cardLookCard
                     startButton
                     if let errorMessage {
                         Text(errorMessage)
@@ -205,6 +207,45 @@ struct PlayerSetupView: View {
         .themedCard()
     }
 
+    private var cardLookCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("KARTEN-STIL")
+                .font(.caption.weight(.black))
+                .tracking(2)
+                .foregroundStyle(t.textMuted)
+            HStack(spacing: 10) {
+                ForEach(TimelineCardStyle.allCases) { style in
+                    let selected = cardLook == style
+                    Button {
+                        withAnimation(.spring(duration: 0.3)) { cardLook = style }
+                    } label: {
+                        VStack(spacing: 6) {
+                            CardFace(
+                                style: style, t: t,
+                                yearText: "1991", name: "Song",
+                                accent: Color(hex: t.playerColors[0]),
+                                size: CGSize(width: 58, height: 70)
+                            )
+                            .scaleEffect(0.92)
+                            Text(style.label)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(selected ? t.text : t.textMuted)
+                        }
+                        .padding(8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(selected ? t.highlight : .clear, lineWidth: 2)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .padding(18)
+        .themedCard()
+    }
+
     private var startButton: some View {
         Button {
             Task { await start() }
@@ -242,6 +283,7 @@ struct PlayerSetupView: View {
         }
         engine.settings.winCondition = .cards(targetCards)
         engine.settings.snippetSeconds = snippetSeconds
+        engine.settings.cardLook = cardLook
 
         do {
             let queue = try await provider.loadTracks(settings: engine.settings)

@@ -282,43 +282,26 @@ struct GameView: View {
     }
 
     private func yearCard(_ card: Track) -> some View {
-        VStack(spacing: 6) {
-            Text(String(card.releaseYear))
-                .font(.system(size: 24, weight: t.titleWeight == .light ? .regular : t.titleWeight, design: t.fontDesign))
-                .foregroundStyle(t.text)
-            Rectangle()
-                .fill(playerColor)
-                .frame(width: 34, height: 3)
-            Text(card.name)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(t.textMuted)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-        }
-        .padding(.horizontal, 6)
-        .frame(width: 92, height: 112)
-        .themedCard(cornerRadius: 14, shadow: playerColor)
+        CardFace(
+            style: engine.settings.cardLook,
+            t: t,
+            yearText: String(card.releaseYear),
+            name: card.name,
+            accent: playerColor
+        )
     }
 
     // MARK: Mystery-Karte (ziehbar)
 
     private var mysteryCard: some View {
-        VStack(spacing: 2) {
-            Image(systemName: "crown.fill")
-                .font(.system(size: 13, weight: .black))
-                .foregroundStyle(t.highlight)
-            Text("?")
-                .font(.system(size: 40, weight: t.titleWeight == .light ? .regular : t.titleWeight, design: t.fontDesign))
-                .foregroundStyle(t.onAccent)
-            Text(isDragging ? "loslassen" : "ziehen ↑")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(t.onAccent.opacity(0.85))
-        }
-        .frame(width: 96, height: 116)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(t.ctaStyle)
-                .themedShadow(t, color: t.shadow == .hard ? t.bad : nil)
+        CardFace(
+            style: engine.settings.cardLook,
+            t: t,
+            yearText: "?",
+            name: isDragging ? "loslassen" : "ziehen ↑",
+            accent: t.accent,
+            isMystery: true,
+            size: CGSize(width: 96, height: 116)
         )
         .scaleEffect(isDragging ? 1.12 : 1)
         .rotationEffect(.degrees(isDragging ? -4 : 0))
