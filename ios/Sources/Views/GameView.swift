@@ -360,9 +360,15 @@ struct GameView: View {
             .onEnded { _ in
                 let gap = targetedGap
                 isDragging = false
-                if let gap, let gf = gapFrames[gap], mysteryHome != .zero {
-                    haptic(.medium)
-                    // Karte in die Lücke fliegen lassen, dann platzieren.
+                guard let gap else {
+                    // daneben losgelassen → zurückfedern
+                    withAnimation(.spring(duration: 0.45, bounce: 0.4)) { dragOffset = .zero }
+                    return
+                }
+                haptic(.medium)
+                // Wenn der Lücken-Rahmen bekannt ist, fliegt die Karte hinein —
+                // sonst direkt platzieren (Platzieren darf NIE ausfallen).
+                if let gf = gapFrames[gap], mysteryHome != .zero {
                     let target = CGSize(
                         width: gf.midX - mysteryHome.midX,
                         height: gf.midY - mysteryHome.midY
@@ -372,14 +378,14 @@ struct GameView: View {
                         isLanding = true
                     }
                     Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(0.38))
+                        try? await Task.sleep(for: .seconds(0.34))
                         place(at: gap)
                         dragOffset = .zero
                         isLanding = false
                     }
                 } else {
-                    withAnimation(.spring(duration: 0.45, bounce: 0.4)) { dragOffset = .zero }
-                    targetedGap = nil
+                    dragOffset = .zero
+                    place(at: gap)
                 }
             }
     }
