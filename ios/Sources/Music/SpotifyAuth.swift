@@ -9,6 +9,7 @@ enum SpotifyError: LocalizedError {
     case notAuthorized
     case authFailed
     case http(Int)
+    case forbidden
     case noPlaylistSelected
 
     var errorDescription: String? {
@@ -16,6 +17,8 @@ enum SpotifyError: LocalizedError {
         case .notAuthorized: return "Nicht bei Spotify angemeldet."
         case .authFailed: return "Spotify-Login fehlgeschlagen oder abgebrochen."
         case .http(let code): return "Spotify-Anfrage fehlgeschlagen (HTTP \(code))."
+        case .forbidden:
+            return "Spotify hat den Zugriff verweigert (403)."
         case .noPlaylistSelected: return "Bitte zuerst eine Playlist auswählen."
         }
     }
