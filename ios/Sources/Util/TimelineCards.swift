@@ -46,8 +46,11 @@ struct CardFace: View {
                 .foregroundStyle(isMystery ? t.onAccent.opacity(0.85) : t.textMuted)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.8)
         }
         .padding(.horizontal, 6)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(classicBG)
     }
 

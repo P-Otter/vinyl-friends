@@ -51,14 +51,25 @@ final class GameEngine: ObservableObject {
         let sorted = Scoring.sortByYear(player.cards)
         let correct = Scoring.isPlacementCorrect(sorted: sorted, track: track, insertIndex: insertIndex)
         player.attempts += 1
-        if correct {
-            player.hits += 1
-            player.cards = Scoring.insertCard(sorted: sorted, track: track)
-        }
+        if correct { player.hits += 1 }
         players[currentPlayerIdx] = player
         lastResult = PlacementResult(track: track, playerId: player.id, insertIndex: insertIndex, correct: correct)
-        // Bei korrektem Platzieren erst blind raten (Bonus), sonst direkt auflösen.
-        phase = (correct && settings.bonusEnabled) ? .bonus : .reveal
+        // Karte NICHT sofort einsortieren — sonst verriete sie Jahr/Titel in der
+        // Timeline, bevor man geraten hat. Erst nach Bonus bzw. Auflösung.
+        if correct && settings.bonusEnabled {
+            phase = .bonus
+        } else {
+            if correct { insertPlacedCard() }
+            phase = .reveal
+        }
+    }
+
+    /// Die zuletzt korrekt platzierte Karte jetzt sichtbar in die Timeline aufnehmen.
+    private func insertPlacedCard() {
+        guard let result = lastResult, result.correct,
+              let idx = players.firstIndex(where: { $0.id == result.playerId }) else { return }
+        let sorted = Scoring.sortByYear(players[idx].cards)
+        players[idx].cards = Scoring.insertCard(sorted: sorted, track: result.track)
     }
 
     /// Bonus-Rateergebnis auswerten (Titel/Artist toleranter Vergleich, Jahr ±Toleranz).
@@ -77,6 +88,7 @@ final class GameEngine: ObservableObject {
         if mastered, let idx = players.firstIndex(where: { $0.id == result.playerId }) {
             players[idx].masteredCount += 1
         }
+        insertPlacedCard()
         phase = .reveal
     }
 
@@ -89,6 +101,7 @@ final class GameEngine: ObservableObject {
             )
             lastResult = result
         }
+        insertPlacedCard()
         phase = .reveal
     }
 
