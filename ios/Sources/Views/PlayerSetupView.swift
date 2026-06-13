@@ -41,8 +41,8 @@ struct PlayerSetupView: View {
                         playlistCard
                     }
                     playersCard
-                    goalCard
-                    bonusCard
+                    winCard
+                    audioCard
                     cardLookCard
                     startButton
                     if let errorMessage {
@@ -178,47 +178,46 @@ struct PlayerSetupView: View {
         .themedCard()
     }
 
-    private var goalCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("SPIELZIEL")
+    /// Klartext-Satz, der die aktuelle Gewinn-Regel ausspricht.
+    private var ruleSentence: Text {
+        let cards = Text("\(targetCards) Karten").bold().foregroundStyle(t.highlight)
+        if bonusEnabled {
+            let m = Text("\(requiredMastered)").bold().foregroundStyle(t.highlight)
+            return Text("Sammle ") + cards + Text(" — und errate bei ") + m
+                + Text(" davon den Song (Titel, Künstler & Jahr). Wer das zuerst schafft, gewinnt.")
+        } else {
+            return Text("Sortiere zuerst ") + cards + Text(" richtig in deine Zeitleiste ein und gewinne.")
+        }
+    }
+
+    private var winCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("SO GEWINNT MAN")
                 .font(.caption.weight(.black))
                 .tracking(2)
                 .foregroundStyle(t.textMuted)
-            HStack {
-                Text("\(targetCards) Karten zum Sieg")
-                    .font(.body.weight(.bold))
-                    .foregroundStyle(t.text)
-                Spacer()
-                Stepper("", value: $targetCards, in: 3...15)
-                    .labelsHidden()
-            }
-            Divider().overlay(t.surfaceStroke.opacity(0.3))
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(snippetSeconds)s pro Song")
-                        .font(.body.weight(.bold))
-                        .foregroundStyle(t.text)
-                    Text("Schnipsel-Länge (Vorschau max. 30s)")
-                        .font(.caption2)
-                        .foregroundStyle(t.textMuted)
-                }
-                Spacer()
-                Stepper("", value: $snippetSeconds, in: 5...30, step: 5)
-                    .labelsHidden()
-            }
-        }
-        .padding(18)
-        .themedCard()
-    }
 
-    private var bonusCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Toggle(isOn: $bonusEnabled) {
+            ruleSentence
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(t.text)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(t.highlight.opacity(0.12))
+                )
+
+            stepperRow(title: "Karten zum Gewinnen", value: $targetCards, range: 3...15)
+
+            Divider().overlay(t.surfaceStroke.opacity(0.3))
+
+            Toggle(isOn: $bonusEnabled.animation(.spring(duration: 0.3))) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Raten (Bonus)")
+                    Text("Songs erraten")
                         .font(.body.weight(.bold))
                         .foregroundStyle(t.text)
-                    Text("Nach Platzieren Titel/Artist/Jahr raten")
+                    Text("Nach jedem Treffer Titel, Künstler & Jahr raten")
                         .font(.caption2)
                         .foregroundStyle(t.textMuted)
                 }
@@ -226,31 +225,23 @@ struct PlayerSetupView: View {
             .tint(t.highlight)
 
             if bonusEnabled {
-                Divider().overlay(t.surfaceStroke.opacity(0.3))
-                HStack {
-                    Text("Gemeistert ab")
+                stepperRow(
+                    title: "Davon richtig erraten",
+                    subtitle: "So viele Songs musst du knacken",
+                    value: $requiredMastered, range: 1...targetCards
+                )
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Wann zählt ein Song als erraten?")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(t.text)
-                    Spacer()
                     Picker("", selection: $masteryThreshold) {
-                        Text("2 von 3").tag(2)
-                        Text("alle 3").tag(3)
+                        Text("2 von 3 reichen").tag(2)
+                        Text("alle 3 nötig").tag(3)
                     }
                     .pickerStyle(.segmented)
-                    .frame(width: 150)
-                }
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(requiredMastered) gemeistert zum Sieg")
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(t.text)
-                        Text("zusätzlich zu \(targetCards) Karten")
-                            .font(.caption2)
-                            .foregroundStyle(t.textMuted)
-                    }
-                    Spacer()
-                    Stepper("", value: $requiredMastered, in: 1...targetCards)
-                        .labelsHidden()
+                    Text("von Titel · Künstler · Jahr")
+                        .font(.caption2)
+                        .foregroundStyle(t.textMuted)
                 }
             }
         }
@@ -259,6 +250,44 @@ struct PlayerSetupView: View {
         .onChange(of: targetCards) { _, newValue in
             if requiredMastered > newValue { requiredMastered = newValue }
         }
+    }
+
+    private func stepperRow(title: String, subtitle: String? = nil, value: Binding<Int>, range: ClosedRange<Int>, step: Int = 1) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(t.text)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(t.textMuted)
+                }
+            }
+            Spacer()
+            Text("\(value.wrappedValue)")
+                .font(.headline.weight(.black).monospacedDigit())
+                .foregroundStyle(t.highlight)
+                .frame(minWidth: 24)
+            Stepper("", value: value, in: range, step: step)
+                .labelsHidden()
+        }
+    }
+
+    private var audioCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("SPIELDAUER")
+                .font(.caption.weight(.black))
+                .tracking(2)
+                .foregroundStyle(t.textMuted)
+            stepperRow(
+                title: "Sekunden pro Song",
+                subtitle: "So lange läuft der Schnipsel (Vorschau max. 30s)",
+                value: $snippetSeconds, range: 5...30, step: 5
+            )
+        }
+        .padding(18)
+        .themedCard()
     }
 
     private var cardLookCard: some View {

@@ -19,6 +19,8 @@ struct HitsterFriendsApp: App {
             Group {
                 if isDemoGame {
                     NavigationStack { GameView() }
+                } else if ProcessInfo.processInfo.arguments.contains("-demoSetup") {
+                    NavigationStack { PlayerSetupView() }
                 } else {
                     HomeView()
                 }
