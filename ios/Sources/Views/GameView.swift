@@ -208,7 +208,7 @@ struct GameView: View {
             }
 
             if !AppConfig.iTunesPreviewEnabled {
-                Label("Vorschau aus (Killswitch)", systemImage: "speaker.slash.fill")
+                Label("Ton ist gerade aus", systemImage: "speaker.slash.fill")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(t.textMuted)
             } else if let playbackError {

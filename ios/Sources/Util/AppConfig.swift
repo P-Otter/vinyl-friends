@@ -2,8 +2,7 @@
 import Foundation
 
 enum AppConfig {
-    /// KILL-SWITCH für die iTunes-30s-Vorschau-Wiedergabe.
-    /// `false` = aus (keine iTunes-Abfragen, keine Wiedergabe).
-    /// Zum Reaktivieren hier auf `true` setzen.
-    static let iTunesPreviewEnabled = false
+    /// Schalter für die 30s-Song-Vorschau (iTunes).
+    /// `true` = Ton an (normal). `false` = Ton komplett aus (keine iTunes-Abfragen).
+    static let iTunesPreviewEnabled = true
 }
