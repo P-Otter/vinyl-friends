@@ -32,6 +32,13 @@ struct EndView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 22)
                     .themedCard(cornerRadius: 24)
+                } else {
+                    // Songs aufgebraucht, niemand hat das Ziel erreicht.
+                    Text("Die Songs sind alle — niemand hat das Ziel erreicht. Wer die meisten Karten hat, führt:")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(t.textMuted)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
                 }
 
                 VStack(spacing: 10) {
@@ -87,7 +94,9 @@ struct EndView: View {
             }
             .padding(20)
 
-            ConfettiView()
+            if engine.winner != nil {
+                ConfettiView()
+            }
         }
     }
 }

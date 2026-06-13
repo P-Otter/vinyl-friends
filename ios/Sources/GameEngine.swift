@@ -12,7 +12,11 @@ final class GameEngine: ObservableObject {
     @Published private(set) var currentPlayerIdx = 0
     @Published private(set) var round = 0
     @Published private(set) var lastResult: PlacementResult?
+    @Published private(set) var winnerId: UUID?
+    @Published private(set) var finishReason: FinishReason?
     private var startedAt: Date?
+
+    enum FinishReason { case won, exhausted }
 
     var currentTrack: Track? {
         queue.indices.contains(currentTrackIndex) ? queue[currentTrackIndex] : nil
@@ -22,11 +26,11 @@ final class GameEngine: ObservableObject {
         players.indices.contains(currentPlayerIdx) ? players[currentPlayerIdx] : nil
     }
 
+    /// Der tatsächliche Gewinner — der Spieler, der die Bedingung erfüllt hat.
+    /// Bei Spielende durch leere Queue (niemand hat gewonnen) ist das nil.
     var winner: Player? {
-        guard phase == .finished else { return nil }
-        return Scoring.ranking(players).first.flatMap { stats in
-            players.first { $0.id == stats.playerId }
-        }
+        guard phase == .finished, let winnerId else { return nil }
+        return players.first { $0.id == winnerId }
     }
 
     func startGame(queue: [Track]) {
@@ -35,6 +39,8 @@ final class GameEngine: ObservableObject {
         currentPlayerIdx = 0
         round = 1
         lastResult = nil
+        winnerId = nil
+        finishReason = nil
         startedAt = Date()
         for i in players.indices {
             players[i].cards = []
@@ -106,17 +112,34 @@ final class GameEngine: ObservableObject {
     }
 
     func nextPlayer() {
-        let won: Bool
+        // Wer (falls jemand) die Siegbedingung erfüllt — diesen Spieler krönen wir.
+        var satisfier: Player?
         switch settings.winCondition {
         case .cards(let n):
             // Sieg = genug Karten UND (bei Bonus) genug gemeisterte Karten.
             let needMastered = settings.bonusEnabled ? settings.requiredMastered : 0
-            won = players.contains { $0.cards.count >= n && $0.masteredCount >= needMastered }
+            satisfier = players.first { $0.cards.count >= n && $0.masteredCount >= needMastered }
         case .time(let minutes):
-            won = startedAt.map { Date().timeIntervalSince($0) >= Double(minutes) * 60 } ?? false
+            let timeUp = startedAt.map { Date().timeIntervalSince($0) >= Double(minutes) * 60 } ?? false
+            if timeUp {
+                // Zeit-Modus: Spieler mit den meisten Karten gewinnt.
+                satisfier = Scoring.ranking(players).first.flatMap { s in players.first { $0.id == s.playerId } }
+            }
         }
+
+        if let satisfier {
+            winnerId = satisfier.id
+            finishReason = .won
+            phase = .finished
+            lastResult = nil
+            return
+        }
+
         let nextIndex = currentTrackIndex + 1
-        if won || nextIndex >= queue.count {
+        if nextIndex >= queue.count {
+            // Songs alle, niemand hat das Ziel erreicht.
+            winnerId = nil
+            finishReason = .exhausted
             phase = .finished
             lastResult = nil
             return
@@ -131,6 +154,8 @@ final class GameEngine: ObservableObject {
     func skipTrack() {
         let nextIndex = currentTrackIndex + 1
         if nextIndex >= queue.count {
+            winnerId = nil
+            finishReason = .exhausted
             phase = .finished
             lastResult = nil
             return
@@ -146,6 +171,8 @@ final class GameEngine: ObservableObject {
         currentPlayerIdx = 0
         round = 0
         lastResult = nil
+        winnerId = nil
+        finishReason = nil
         startedAt = nil
         for i in players.indices {
             players[i].cards = []

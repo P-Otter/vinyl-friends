@@ -373,6 +373,13 @@ struct PlayerSetupView: View {
 
         do {
             let queue = try await provider.loadTracks(settings: engine.settings)
+            let minNeeded = max(targetCards + 3, 8)
+            guard queue.count >= minNeeded else {
+                errorMessage = queue.isEmpty
+                    ? "Keine passenden Songs gefunden. Wähle eine andere Playlist."
+                    : "Zu wenige passende Songs (\(queue.count)). Mindestens \(minNeeded) nötig — nimm eine größere Playlist oder senke das Kartenziel."
+                return
+            }
             engine.startGame(queue: queue)
             gameStarted = true
         } catch {

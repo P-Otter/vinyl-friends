@@ -392,7 +392,7 @@ struct GameView: View {
 
     private func place(at index: Int) {
         targetedGap = nil
-        stopTimer()
+        stopPlayback() // Song + Timer stoppen, Button zurücksetzen
         withAnimation(.spring(duration: 0.4)) {
             engine.placeCard(insertIndex: index)
         }
@@ -405,10 +405,6 @@ struct GameView: View {
             music.provider?.pause()
             isPlaying = false
         }
-    }
-
-    private func stopTimer() {
-        remaining = 0
     }
 
     private func togglePlay() {

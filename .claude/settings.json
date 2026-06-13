@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat)",
+      "Bash(swift /tmp/wintest.swift)",
+      "Bash(rm -f /tmp/wintest.swift)"
+    ]
+  }
+}
