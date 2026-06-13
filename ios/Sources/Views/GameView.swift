@@ -1,5 +1,14 @@
 import SwiftUI
 
+/// Sammelt die Bildschirm-Rahmen der Timeline-Lücken, damit der Drag erkennt,
+/// über welcher Lücke der Finger gerade ist.
+private struct GapFramePreference: PreferenceKey {
+    static let defaultValue: [Int: CGRect] = [:]
+    static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
+        value.merge(nextValue()) { _, new in new }
+    }
+}
+
 struct GameView: View {
     @EnvironmentObject private var engine: GameEngine
     @EnvironmentObject private var music: MusicSession
@@ -11,6 +20,17 @@ struct GameView: View {
     @State private var isPlaying = false
     @State private var loadedTrackId: String?
     @State private var playbackError: String?
+
+    // Countdown
+    @State private var remaining = 0
+    private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    // Drag der Mystery-Karte
+    @State private var dragOffset: CGSize = .zero
+    @State private var isDragging = false
+    @State private var gapFrames: [Int: CGRect] = [:]
+
+    private let boardSpace = "board"
 
     private var t: AppTheme { themeStore.theme }
 
@@ -42,26 +62,11 @@ struct GameView: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.92)))
             }
         }
+        .coordinateSpace(name: boardSpace)
+        .onPreferenceChange(GapFramePreference.self) { gapFrames = $0 }
+        .onReceive(ticker) { _ in tick() }
         .navigationBarBackButtonHidden(true)
-        .overlay(alignment: .topLeading) {
-            if engine.phase != .finished {
-                Button {
-                    showQuitConfirm = true
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(t.text)
-                        .frame(width: 34, height: 34)
-                        .background(
-                            Circle()
-                                .fill(t.surface)
-                                .overlay(Circle().stroke(t.surfaceStroke, lineWidth: max(t.strokeWidth * 0.6, 1)))
-                        )
-                }
-                .buttonStyle(.plain)
-                .padding(.leading, 18)
-            }
-        }
+        .overlay(alignment: .topLeading) { quitButton }
         .confirmationDialog("Spiel beenden?", isPresented: $showQuitConfirm, titleVisibility: .visible) {
             Button("Spiel beenden", role: .destructive) {
                 stopPlayback()
@@ -73,6 +78,27 @@ struct GameView: View {
             Text("Der Spielstand geht verloren.")
         }
         .onDisappear { stopPlayback() }
+    }
+
+    @ViewBuilder
+    private var quitButton: some View {
+        if engine.phase != .finished {
+            Button {
+                showQuitConfirm = true
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundStyle(t.text)
+                    .frame(width: 34, height: 34)
+                    .background(
+                        Circle()
+                            .fill(t.surface)
+                            .overlay(Circle().stroke(t.surfaceStroke, lineWidth: max(t.strokeWidth * 0.6, 1)))
+                    )
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, 18)
+        }
     }
 
     private var gameBody: some View {
@@ -142,19 +168,7 @@ struct GameView: View {
             WaveformView(playing: isPlaying)
 
             HStack(spacing: 28) {
-                Button(action: togglePlay) {
-                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 22, weight: .black))
-                        .foregroundStyle(t.onAccent)
-                        .frame(width: 60, height: 60)
-                        .background(
-                            Circle()
-                                .fill(t.ctaStyle)
-                                .themedShadow(t)
-                        )
-                }
-                .buttonStyle(.plain)
-
+                playButton
                 Button {
                     stopPlayback()
                     engine.skipTrack()
@@ -183,12 +197,43 @@ struct GameView: View {
         .themedCard(cornerRadius: 26)
     }
 
+    /// Play/Pause mit umlaufendem Countdown-Ring + Sekundenanzeige.
+    private var playButton: some View {
+        let total = max(1, engine.settings.snippetSeconds)
+        return Button(action: togglePlay) {
+            ZStack {
+                Circle()
+                    .stroke(t.text.opacity(0.15), lineWidth: 4)
+                Circle()
+                    .trim(from: 0, to: CGFloat(remaining) / CGFloat(total))
+                    .stroke(t.highlight, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 0.5), value: remaining)
+                Circle()
+                    .fill(t.ctaStyle)
+                    .padding(7)
+                    .themedShadow(t)
+                if isPlaying && remaining > 0 {
+                    Text("\(remaining)")
+                        .font(.system(size: 22, weight: .black, design: .rounded).monospacedDigit())
+                        .foregroundStyle(t.onAccent)
+                } else {
+                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 22, weight: .black))
+                        .foregroundStyle(t.onAccent)
+                }
+            }
+            .frame(width: 72, height: 72)
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: Timeline
 
     private var timelineSection: some View {
         VStack(spacing: 10) {
             Text(sortedCards.isEmpty
-                 ? "Zieh die Karte auf das Feld — die erste ist geschenkt!"
+                 ? "Zieh die Karte aufs Feld — die erste ist geschenkt!"
                  : "Wann kam der Song raus? Zieh die Karte an ihren Platz!")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(t.textMuted)
@@ -218,24 +263,20 @@ struct GameView: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(t.highlight.opacity(isTargeted ? 0.3 : 0.0))
             )
-            .frame(width: isTargeted ? 88 : 46, height: 112)
+            .frame(width: isTargeted ? 92 : 44, height: 112)
             .overlay(
                 Image(systemName: "arrow.down")
                     .font(.headline.bold())
                     .foregroundStyle(isTargeted ? t.highlight : t.text.opacity(0.4))
             )
-            .dropDestination(for: String.self) { _, _ in
-                place(at: index)
-                return true
-            } isTargeted: { over in
-                withAnimation(.spring(duration: 0.3)) {
-                    if over {
-                        targetedGap = index
-                    } else if targetedGap == index {
-                        targetedGap = nil
-                    }
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(
+                        key: GapFramePreference.self,
+                        value: [index: geo.frame(in: .named(boardSpace))]
+                    )
                 }
-            }
+            )
             .onTapGesture { place(at: index) }
             .animation(.spring(duration: 0.3), value: targetedGap)
     }
@@ -259,7 +300,7 @@ struct GameView: View {
         .themedCard(cornerRadius: 14, shadow: playerColor)
     }
 
-    // MARK: Mystery-Karte
+    // MARK: Mystery-Karte (ziehbar)
 
     private var mysteryCard: some View {
         VStack(spacing: 2) {
@@ -269,7 +310,7 @@ struct GameView: View {
             Text("?")
                 .font(.system(size: 40, weight: t.titleWeight == .light ? .regular : t.titleWeight, design: t.fontDesign))
                 .foregroundStyle(t.onAccent)
-            Text("Dieser Song")
+            Text(isDragging ? "loslassen" : "ziehen ↑")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(t.onAccent.opacity(0.85))
         }
@@ -279,17 +320,61 @@ struct GameView: View {
                 .fill(t.ctaStyle)
                 .themedShadow(t, color: t.shadow == .hard ? t.bad : nil)
         )
-        .draggable("mystery-track")
+        .scaleEffect(isDragging ? 1.12 : 1)
+        .rotationEffect(.degrees(isDragging ? -4 : 0))
+        .offset(dragOffset)
+        .zIndex(isDragging ? 20 : 0)
+        .gesture(dragGesture)
+        .animation(.spring(duration: 0.3), value: isDragging)
         .padding(.bottom, 4)
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture(coordinateSpace: .named(boardSpace))
+            .onChanged { value in
+                if !isDragging { isDragging = true }
+                dragOffset = value.translation
+                let hit = gapFrames.first {
+                    $0.value.insetBy(dx: -6, dy: -60).contains(value.location)
+                }?.key
+                if hit != targetedGap {
+                    withAnimation(.spring(duration: 0.25)) { targetedGap = hit }
+                }
+            }
+            .onEnded { _ in
+                let gap = targetedGap
+                isDragging = false
+                if let gap {
+                    dragOffset = .zero
+                    place(at: gap)
+                } else {
+                    withAnimation(.spring(duration: 0.45, bounce: 0.4)) { dragOffset = .zero }
+                    targetedGap = nil
+                }
+            }
     }
 
     // MARK: Aktionen
 
     private func place(at index: Int) {
         targetedGap = nil
+        stopTimer()
         withAnimation(.spring(duration: 0.4)) {
             engine.placeCard(insertIndex: index)
         }
+    }
+
+    private func tick() {
+        guard isPlaying, remaining > 0 else { return }
+        remaining -= 1
+        if remaining == 0 {
+            music.provider?.pause()
+            isPlaying = false
+        }
+    }
+
+    private func stopTimer() {
+        remaining = 0
     }
 
     private func togglePlay() {
@@ -298,7 +383,7 @@ struct GameView: View {
         if isPlaying {
             provider.pause()
             isPlaying = false
-        } else if loadedTrackId == track.id {
+        } else if loadedTrackId == track.id && remaining > 0 {
             provider.resume()
             isPlaying = true
         } else {
@@ -306,6 +391,7 @@ struct GameView: View {
                 do {
                     try await provider.play(track)
                     loadedTrackId = track.id
+                    remaining = engine.settings.snippetSeconds
                     isPlaying = true
                 } catch {
                     playbackError = error.localizedDescription
@@ -318,5 +404,6 @@ struct GameView: View {
         music.provider?.stop()
         isPlaying = false
         loadedTrackId = nil
+        remaining = 0
     }
 }

@@ -41,6 +41,10 @@ struct GameSettings: Codable, Hashable {
     var minTrackLengthSec: Int = 60
     var allowExplicit: Bool = true
     var randomOffset: Bool = true
+    // Sekunden, die ein Song-Schnipsel spielt, bevor automatisch gestoppt wird.
+    // 30s-Vorschauen begrenzen das nach oben; volle Songs (Spotify auf dem Gerät)
+    // erlauben später mehr.
+    var snippetSeconds: Int = 20
 }
 
 enum GamePhase: String, Codable {

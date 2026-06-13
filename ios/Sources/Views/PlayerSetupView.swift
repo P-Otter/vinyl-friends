@@ -7,6 +7,7 @@ struct PlayerSetupView: View {
 
     @State private var names: [String] = ["", ""]
     @State private var targetCards = 5
+    @State private var snippetSeconds = 20
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var gameStarted = false
@@ -185,6 +186,20 @@ struct PlayerSetupView: View {
                 Stepper("", value: $targetCards, in: 3...15)
                     .labelsHidden()
             }
+            Divider().overlay(t.surfaceStroke.opacity(0.3))
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(snippetSeconds)s pro Song")
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(t.text)
+                    Text("Schnipsel-Länge (Vorschau max. 30s)")
+                        .font(.caption2)
+                        .foregroundStyle(t.textMuted)
+                }
+                Spacer()
+                Stepper("", value: $snippetSeconds, in: 5...30, step: 5)
+                    .labelsHidden()
+            }
         }
         .padding(18)
         .themedCard()
@@ -226,6 +241,7 @@ struct PlayerSetupView: View {
             Player(name: name, colorHex: t.playerColors[i % t.playerColors.count])
         }
         engine.settings.winCondition = .cards(targetCards)
+        engine.settings.snippetSeconds = snippetSeconds
 
         do {
             let queue = try await provider.loadTracks(settings: engine.settings)
