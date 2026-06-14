@@ -4,6 +4,7 @@ struct HomeView: View {
     @EnvironmentObject private var engine: GameEngine
     @EnvironmentObject private var music: MusicSession
     @EnvironmentObject private var themeStore: ThemeStore
+    @EnvironmentObject private var modeStore: AppModeStore
 
     @State private var goToSetup = false
     @State private var spotifyBusy = false
@@ -17,6 +18,19 @@ struct HomeView: View {
                 ThemedBackground()
 
                 VStack(spacing: 16) {
+                    HStack {
+                        Spacer()
+                        Button {
+                            withAnimation { modeStore.reset() }
+                        } label: {
+                            Label((modeStore.mode ?? .local).title, systemImage: "arrow.triangle.2.circlepath")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(t.textMuted)
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(Capsule().fill(t.surface).overlay(Capsule().stroke(t.surfaceStroke.opacity(0.5), lineWidth: 1)))
+                        }
+                        .buttonStyle(.plain)
+                    }
                     Spacer()
 
                     Image(systemName: "crown.fill")
@@ -58,24 +72,26 @@ struct HomeView: View {
                     .buttonStyle(.plain)
 
                     HStack(spacing: 10) {
-                        Button {
-                            startSpotify()
-                        } label: {
-                            Group {
-                                if spotifyBusy {
-                                    ProgressView().tint(t.text)
-                                } else {
-                                    Label("Spotify", systemImage: "music.note")
-                                        .font(.subheadline.weight(.bold))
+                        if modeStore.spotifyEnabled {
+                            Button {
+                                startSpotify()
+                            } label: {
+                                Group {
+                                    if spotifyBusy {
+                                        ProgressView().tint(t.text)
+                                    } else {
+                                        Label("Spotify", systemImage: "music.note")
+                                            .font(.subheadline.weight(.bold))
+                                    }
                                 }
+                                .foregroundStyle(t.text)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Capsule().fill(t.surface).overlay(Capsule().stroke(t.surfaceStroke, lineWidth: max(t.strokeWidth, 1))))
                             }
-                            .foregroundStyle(t.text)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Capsule().fill(t.surface).overlay(Capsule().stroke(t.surfaceStroke, lineWidth: max(t.strokeWidth, 1))))
+                            .buttonStyle(.plain)
+                            .disabled(spotifyBusy)
                         }
-                        .buttonStyle(.plain)
-                        .disabled(spotifyBusy)
 
                         Button {
                             music.provider = DemoProvider()

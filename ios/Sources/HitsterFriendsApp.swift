@@ -5,6 +5,7 @@ struct HitsterFriendsApp: App {
     @StateObject private var engine = GameEngine()
     @StateObject private var music = MusicSession()
     @StateObject private var themeStore = ThemeStore()
+    @StateObject private var modeStore = AppModeStore()
 
     // Launch-Argument "-demoGame" startet direkt ein vorbereitetes Spiel —
     // für UI-Entwicklung und Screenshots. Theme dazu wählbar via "-themeId <id>"
@@ -23,6 +24,8 @@ struct HitsterFriendsApp: App {
                     NavigationStack { PlayerSetupView() }
                 } else if ProcessInfo.processInfo.arguments.contains("-demoPool") {
                     NavigationStack { PoolBuilderView() }
+                } else if modeStore.mode == nil {
+                    ModeSelectView()
                 } else {
                     HomeView()
                 }
@@ -30,6 +33,7 @@ struct HitsterFriendsApp: App {
             .environmentObject(engine)
             .environmentObject(music)
             .environmentObject(themeStore)
+            .environmentObject(modeStore)
             .tint(themeStore.theme.accent)
             .preferredColorScheme(themeStore.theme.colorScheme)
             .onAppear {

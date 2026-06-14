@@ -5,11 +5,12 @@ import SwiftUI
 struct PoolBuilderView: View {
     @EnvironmentObject private var music: MusicSession
     @EnvironmentObject private var themeStore: ThemeStore
+    @EnvironmentObject private var modeStore: AppModeStore
 
     enum Mode: String { case spotify = "Spotify", search = "Suchen", paste = "Liste" }
     enum SortBy: String, CaseIterable { case added = "Zuletzt", year = "Jahr", title = "Titel" }
 
-    @State private var mode: Mode = AppConfig.spotifyImportEnabled ? .spotify : .search
+    @State private var mode: Mode = .spotify
     @State private var query = ""
     @State private var results: [Track] = []
     @State private var searching = false
@@ -32,7 +33,7 @@ struct PoolBuilderView: View {
     private var t: AppTheme { themeStore.theme }
     private var poolIDs: Set<String> { Set(pool.map(\.id)) }
     private var modes: [Mode] {
-        AppConfig.spotifyImportEnabled ? [.spotify, .search, .paste] : [.search, .paste]
+        modeStore.spotifyEnabled ? [.spotify, .search, .paste] : [.search, .paste]
     }
 
     private var sortedPool: [Track] {
@@ -76,6 +77,7 @@ struct PoolBuilderView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .bottom) { startBar }
         .navigationDestination(isPresented: $gameStarted) { PlayerSetupView() }
+        .onAppear { if !modes.contains(mode) { mode = modes.first ?? .search } }
     }
 
     // MARK: Spotify-Import (private Version)
