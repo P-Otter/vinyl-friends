@@ -19,8 +19,9 @@ struct PoolBuilderView: View {
     @State private var importInfo: String?
     @State private var pool: [Track] = []
 
-    // Spotify-Import (nur private Version)
-    @State private var spotify = SpotifyProvider()
+    // Spotify-Import (nur private Version) — Provider erst bei Bedarf erzeugen,
+    // damit im App-Store-Modus KEIN Spotify-Objekt entsteht.
+    @State private var spotify: SpotifyProvider?
     @State private var spotifyAuthorized = false
     @State private var spotifyPlaylists: [SpotifyPlaylist] = []
     @State private var spotifyBusy = false
@@ -131,7 +132,7 @@ struct PoolBuilderView: View {
             Text("Deine Spotify-Playlist in den Pool laden. Gespielt wird als 30s-Vorschau.")
                 .font(.caption).foregroundStyle(t.textMuted)
 
-            if !spotifyAuthorized && !spotify.isAuthorized {
+            if !spotifyAuthorized && !(spotify?.isAuthorized ?? false) {
                 Button { connectSpotify() } label: {
                     HStack {
                         if spotifyBusy { ProgressView().tint(t.onAccent) }
@@ -161,7 +162,7 @@ struct PoolBuilderView: View {
                         }
                         .padding(.vertical, 6)
                     }
-                    .buttonStyle(.plain).disabled(importingPlaylistId != nil)
+                    .buttonStyle(.plain).disabled(importingPlaylistId != nil || spotifyBusy)
                 }
             }
         }
@@ -169,24 +170,36 @@ struct PoolBuilderView: View {
         .task { await autoLoadPlaylists() }
     }
 
+    /// Provider erst hier (nur im Lokal-Modus erreichbar) erzeugen.
+    private func ensureSpotify() -> SpotifyProvider {
+        if let s = spotify { return s }
+        let s = SpotifyProvider()
+        spotify = s
+        return s
+    }
+
     private func autoLoadPlaylists() async {
-        guard spotify.isAuthorized, spotifyPlaylists.isEmpty, !spotifyBusy else { return }
+        guard modeStore.spotifyEnabled, !spotifyBusy, spotifyPlaylists.isEmpty else { return }
+        let s = ensureSpotify()
+        guard s.isAuthorized else { return }
         spotifyBusy = true
         defer { spotifyBusy = false }
         do {
             spotifyAuthorized = true
-            spotifyPlaylists = try await spotify.myPlaylists()
+            spotifyPlaylists = try await s.myPlaylists()
         } catch { errorText = error.localizedDescription }
     }
 
     private func connectSpotify() {
+        guard modeStore.spotifyEnabled, !spotifyBusy else { return }
         spotifyBusy = true
+        let s = ensureSpotify()
         Task {
             defer { spotifyBusy = false }
             do {
-                if !spotify.isAuthorized { try await spotify.authorize() }
+                if !s.isAuthorized { try await s.authorize() }
                 spotifyAuthorized = true
-                spotifyPlaylists = try await spotify.myPlaylists()
+                spotifyPlaylists = try await s.myPlaylists()
             } catch {
                 errorText = error.localizedDescription
             }
@@ -194,11 +207,12 @@ struct PoolBuilderView: View {
     }
 
     private func importPlaylist(_ pl: SpotifyPlaylist) {
+        guard importingPlaylistId == nil, let s = spotify else { return }
         importingPlaylistId = pl.id
         Task {
             defer { importingPlaylistId = nil }
             do {
-                let tracks = try await spotify.playlistTracks(pl.id)
+                let tracks = try await s.playlistTracks(pl.id)
                 var added = 0
                 for tr in tracks where !poolIDs.contains(tr.id) {
                     pool.append(tr); added += 1

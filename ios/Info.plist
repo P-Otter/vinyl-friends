@@ -31,8 +31,6 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
-	<key>NSAppleMusicUsageDescription</key>
-	<string>Wird für die Apple-Music-Wiedergabe im Spiel benötigt.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

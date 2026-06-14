@@ -14,6 +14,13 @@ struct BonusGuessView: View {
     private enum Field { case title, artist, year }
     private var t: AppTheme { themeStore.theme }
 
+    /// Mindestens ein Feld gefüllt — sonst wäre „Auflösen" ein stiller Fehlversuch.
+    private var hasAnyGuess: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty
+            || !artist.trimmingCharacters(in: .whitespaces).isEmpty
+            || !yearText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     var body: some View {
         ZStack {
             Color.black.opacity(0.6).ignoresSafeArea()
@@ -52,6 +59,7 @@ struct BonusGuessView: View {
                     .buttonStyle(.plain)
 
                     Button {
+                        focused = nil
                         engine.submitBonus(title: title, artist: artist, year: Int(yearText) ?? 0)
                     } label: {
                         Text("Auflösen")
@@ -59,9 +67,15 @@ struct BonusGuessView: View {
                             .foregroundStyle(t.onAccent)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 13)
-                            .background(Capsule().fill(t.ctaStyle).themedShadow(t))
+                            .background(Capsule().fill(t.ctaStyle).opacity(hasAnyGuess ? 1 : 0.4).themedShadow(t))
                     }
                     .buttonStyle(.plain)
+                    .disabled(!hasAnyGuess)
+                }
+
+                if !hasAnyGuess {
+                    Text("Mindestens ein Feld ausfüllen — sonst tippe auf Weiß nicht.")
+                        .font(.caption2).foregroundStyle(t.textMuted)
                 }
             }
             .padding(24)

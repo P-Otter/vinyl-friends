@@ -127,6 +127,7 @@ struct HomeView: View {
     }
 
     private func startSpotify() {
+        guard modeStore.spotifyEnabled else { return } // im App-Store-Modus nie
         spotifyError = nil
         spotifyBusy = true
         Task {

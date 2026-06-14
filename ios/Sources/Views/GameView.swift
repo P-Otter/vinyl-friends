@@ -200,6 +200,7 @@ struct GameView: View {
             HStack(spacing: 28) {
                 playButton
                     .opacity(AppConfig.iTunesPreviewEnabled ? 1 : 0.35)
+                    .disabled(!AppConfig.iTunesPreviewEnabled)
                 Button {
                     stopPlayback()
                     if engine.phase == .steal { engine.skipSteal() } else { engine.skipTrack() }
@@ -298,14 +299,14 @@ struct GameView: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(t.highlight.opacity(isTargeted ? 0.3 : 0.0))
             )
-            .frame(width: isTargeted ? 96 : 44, height: 112)
-            .shadow(color: isTargeted ? t.highlight.opacity(0.6) : .clear, radius: 14)
             .overlay(
                 Image(systemName: isTargeted ? "arrow.down.circle.fill" : "arrow.down")
                     .font(.title3.bold())
                     .foregroundStyle(isTargeted ? t.highlight : t.text.opacity(0.4))
-                    .scaleEffect(isTargeted ? 1.15 : 1)
             )
+            // Konstante Layout-Breite — der GeometryReader misst sie VOR der Skalierung,
+            // damit die Drag-Trefferfläche stabil bleibt (kein ScrollView-Relayout).
+            .frame(width: 52, height: 112)
             .background(
                 GeometryReader { geo in
                     Color.clear.preference(
@@ -314,8 +315,11 @@ struct GameView: View {
                     )
                 }
             )
-            .onTapGesture { place(at: index) }
-            .animation(.spring(duration: 0.3), value: targetedGap)
+            .scaleEffect(isTargeted ? 1.45 : 1) // nur visuell, ändert kein Layout
+            .shadow(color: isTargeted ? t.highlight.opacity(0.6) : .clear, radius: 14)
+            .zIndex(isTargeted ? 5 : 0)
+            .onTapGesture { if !isDragging && !isLanding { place(at: index) } }
+            .animation(.spring(duration: 0.22), value: targetedGap)
     }
 
     private func yearCard(_ card: Track) -> some View {
@@ -355,50 +359,52 @@ struct GameView: View {
         .offset(dragOffset)
         .zIndex(isDragging || isLanding ? 20 : 0)
         .gesture(dragGesture)
-        .animation(.spring(duration: 0.3), value: isDragging)
         .padding(.bottom, 4)
     }
 
     private var dragGesture: some Gesture {
         DragGesture(coordinateSpace: .named(boardSpace))
             .onChanged { value in
-                if !isDragging { isDragging = true }
+                // Lift animiert; das Folgen des Fingers bleibt synchron (kein Lag).
+                if !isDragging { withAnimation(.spring(duration: 0.2)) { isDragging = true } }
                 dragOffset = value.translation
                 let hit = gapFrames.first {
                     $0.value.insetBy(dx: -6, dy: -60).contains(value.location)
                 }?.key
                 if hit != targetedGap {
                     if hit != nil { haptic(.light) }
-                    withAnimation(.spring(duration: 0.25)) { targetedGap = hit }
+                    targetedGap = hit // synchron — gapSlot animiert selbst, kein Finger-Lag
                 }
             }
             .onEnded { _ in
                 let gap = targetedGap
-                isDragging = false
                 guard let gap else {
-                    // daneben losgelassen → zurückfedern
-                    withAnimation(.spring(duration: 0.45, bounce: 0.4)) { dragOffset = .zero }
+                    withAnimation(.spring(duration: 0.4, bounce: 0.4)) {
+                        dragOffset = .zero; isDragging = false
+                    }
                     return
                 }
                 haptic(.medium)
-                // Wenn der Lücken-Rahmen bekannt ist, fliegt die Karte hinein —
-                // sonst direkt platzieren (Platzieren darf NIE ausfallen).
+                // Lücken-Rahmen bekannt → Karte fliegt hinein; sonst direkt platzieren.
                 if let gf = gapFrames[gap], mysteryHome != .zero {
                     let target = CGSize(
                         width: gf.midX - mysteryHome.midX,
                         height: gf.midY - mysteryHome.midY
                     )
+                    // Eine Animation treibt offset + scale + opacity gemeinsam.
                     withAnimation(.spring(duration: 0.4, bounce: 0.2)) {
                         dragOffset = target
                         isLanding = true
+                        isDragging = false
                     }
                     Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(0.34))
+                        try? await Task.sleep(for: .seconds(0.4))
                         place(at: gap)
                         dragOffset = .zero
                         isLanding = false
                     }
                 } else {
+                    isDragging = false
                     dragOffset = .zero
                     place(at: gap)
                 }
@@ -424,7 +430,9 @@ struct GameView: View {
     }
 
     private func tick() {
-        guard isPlaying, remaining > 0 else { return }
+        // Nur in aktiven Platzier-Phasen zählen — nicht während Bonus/Reveal.
+        guard isPlaying, remaining > 0,
+              engine.phase == .playing || engine.phase == .steal else { return }
         remaining -= 1
         if remaining == 0 {
             music.provider?.pause()

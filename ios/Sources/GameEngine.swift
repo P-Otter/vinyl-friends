@@ -196,8 +196,11 @@ final class GameEngine: ObservableObject {
             lastResult = nil
             return
         }
+        // Gleicher Spieler, neuer Song — Phase/Reste sicher zurücksetzen.
         currentTrackIndex = nextIndex
         lastResult = nil
+        stealerIdx = nil
+        phase = .playing
     }
 
     func resetGame() {
