@@ -9,6 +9,8 @@ struct HomeView: View {
     @State private var goToSetup = false
     @State private var spotifyBusy = false
     @State private var spotifyError: String?
+    @AppStorage("onboardingDone") private var onboardingDone = false
+    @State private var showOnboarding = false
 
     private var t: AppTheme { themeStore.theme }
 
@@ -117,6 +119,10 @@ struct HomeView: View {
                 .padding(24)
             }
             .navigationDestination(isPresented: $goToSetup) { PlayerSetupView() }
+        }
+        .onAppear { showOnboarding = !onboardingDone }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView { onboardingDone = true; showOnboarding = false }
         }
     }
 

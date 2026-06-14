@@ -53,6 +53,8 @@ struct PoolBuilderView: View {
             ThemedBackground()
             ScrollView {
                 VStack(spacing: 18) {
+                    if !SongPacks.all.isEmpty { packsRow }
+
                     Picker("", selection: $mode) {
                         ForEach(modes, id: \.self) { Text($0.rawValue).tag($0) }
                     }
@@ -78,6 +80,48 @@ struct PoolBuilderView: View {
         .safeAreaInset(edge: .bottom) { startBar }
         .navigationDestination(isPresented: $gameStarted) { PlayerSetupView() }
         .onAppear { if !modes.contains(mode) { mode = modes.first ?? .search } }
+    }
+
+    // MARK: Fertige Packs
+
+    private var packsRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("FERTIGE PACKS — TIPP HINZUFÜGEN")
+                .font(.caption2.weight(.black)).tracking(1.5).foregroundStyle(t.textMuted)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(SongPacks.all) { pack in
+                        Button { addPack(pack) } label: {
+                            VStack(spacing: 3) {
+                                Text(pack.emoji).font(.title2)
+                                Text(pack.name).font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(t.text).lineLimit(1).minimumScaleFactor(0.8)
+                                Text("\(pack.songs.count)")
+                                    .font(.system(size: 9, weight: .bold).monospacedDigit())
+                                    .foregroundStyle(t.highlight)
+                            }
+                            .frame(width: 86)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(t.surface)
+                                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(t.surfaceStroke.opacity(0.6), lineWidth: max(t.strokeWidth * 0.6, 1)))
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+        }
+        .padding(14).themedCard()
+    }
+
+    private func addPack(_ pack: SongPack) {
+        var added = 0
+        for tr in pack.tracks() where !poolIDs.contains(tr.id) { pool.append(tr); added += 1 }
+        importInfo = "\(added) Songs aus \(pack.name) hinzugefügt"
     }
 
     // MARK: Spotify-Import (private Version)

@@ -2,11 +2,20 @@ import SwiftUI
 
 struct RevealOverlay: View {
     @EnvironmentObject private var themeStore: ThemeStore
+    @Environment(\.openURL) private var openURL
     let result: PlacementResult
     let onContinue: () -> Void
 
     private var t: AppTheme { themeStore.theme }
     private var stampColor: Color { result.correct ? t.good : t.bad }
+
+    /// Öffnet den Song in Spotify — exakte URI (importierte Tracks) oder Suche.
+    private var spotifyURL: URL? {
+        if result.track.uri.hasPrefix("spotify:") { return URL(string: result.track.uri) }
+        let q = "\(result.track.artist) \(result.track.name)"
+            .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
+        return URL(string: "https://open.spotify.com/search/\(q)")
+    }
 
     var body: some View {
         ZStack {
@@ -44,19 +53,31 @@ struct RevealOverlay: View {
                     bonusBlock(bonus)
                 }
 
-                Button(action: onContinue) {
-                    Text("Weiter")
-                        .font(.headline.weight(.black))
-                        .foregroundStyle(t.onAccent)
-                        .padding(.horizontal, 44)
-                        .padding(.vertical, 13)
-                        .background(
-                            Capsule()
-                                .fill(t.ctaStyle)
-                                .themedShadow(t)
-                        )
+                HStack(spacing: 10) {
+                    if let url = spotifyURL {
+                        Button {
+                            openURL(url)
+                        } label: {
+                            Label("Auf Spotify", systemImage: "play.circle.fill")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(t.text)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 13)
+                                .background(Capsule().fill(t.surface).overlay(Capsule().stroke(t.surfaceStroke, lineWidth: max(t.strokeWidth, 1))))
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Button(action: onContinue) {
+                        Text("Weiter")
+                            .font(.headline.weight(.black))
+                            .foregroundStyle(t.onAccent)
+                            .padding(.horizontal, 36)
+                            .padding(.vertical, 13)
+                            .background(Capsule().fill(t.ctaStyle).themedShadow(t))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
                 .padding(.top, 6)
             }
             .padding(30)
