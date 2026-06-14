@@ -6,10 +6,10 @@ struct PoolBuilderView: View {
     @EnvironmentObject private var music: MusicSession
     @EnvironmentObject private var themeStore: ThemeStore
 
-    enum Mode: String, CaseIterable { case search = "Suchen", paste = "Liste einfügen" }
+    enum Mode: String { case spotify = "Spotify", search = "Suchen", paste = "Liste" }
     enum SortBy: String, CaseIterable { case added = "Zuletzt", year = "Jahr", title = "Titel" }
 
-    @State private var mode: Mode = .search
+    @State private var mode: Mode = AppConfig.spotifyImportEnabled ? .spotify : .search
     @State private var query = ""
     @State private var results: [Track] = []
     @State private var searching = false
@@ -17,6 +17,13 @@ struct PoolBuilderView: View {
     @State private var importing = false
     @State private var importInfo: String?
     @State private var pool: [Track] = []
+
+    // Spotify-Import (nur private Version)
+    @State private var spotify = SpotifyProvider()
+    @State private var spotifyAuthorized = false
+    @State private var spotifyPlaylists: [SpotifyPlaylist] = []
+    @State private var spotifyBusy = false
+    @State private var importingPlaylistId: String?
     @State private var sortBy: SortBy = .added
     @State private var poolFilter = ""
     @State private var gameStarted = false
@@ -24,6 +31,9 @@ struct PoolBuilderView: View {
 
     private var t: AppTheme { themeStore.theme }
     private var poolIDs: Set<String> { Set(pool.map(\.id)) }
+    private var modes: [Mode] {
+        AppConfig.spotifyImportEnabled ? [.spotify, .search, .paste] : [.search, .paste]
+    }
 
     private var sortedPool: [Track] {
         let filtered = poolFilter.isEmpty ? pool : pool.filter {
@@ -43,11 +53,15 @@ struct PoolBuilderView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     Picker("", selection: $mode) {
-                        ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                        ForEach(modes, id: \.self) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.segmented)
 
-                    if mode == .search { searchCard } else { pasteCard }
+                    switch mode {
+                    case .spotify: spotifyCard
+                    case .search: searchCard
+                    case .paste: pasteCard
+                    }
 
                     poolCard
                     if let errorText {
@@ -62,6 +76,92 @@ struct PoolBuilderView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .bottom) { startBar }
         .navigationDestination(isPresented: $gameStarted) { PlayerSetupView() }
+    }
+
+    // MARK: Spotify-Import (private Version)
+
+    private var spotifyCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Deine Spotify-Playlist in den Pool laden. Gespielt wird als 30s-Vorschau.")
+                .font(.caption).foregroundStyle(t.textMuted)
+
+            if !spotifyAuthorized && !spotify.isAuthorized {
+                Button { connectSpotify() } label: {
+                    HStack {
+                        if spotifyBusy { ProgressView().tint(t.onAccent) }
+                        Label(spotifyBusy ? "Verbinde …" : "Mit Spotify verbinden", systemImage: "music.note")
+                    }
+                    .font(.subheadline.weight(.black)).foregroundStyle(t.onAccent)
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .background(Capsule().fill(t.ctaStyle))
+                }
+                .buttonStyle(.plain).disabled(spotifyBusy)
+            } else if spotifyBusy && spotifyPlaylists.isEmpty {
+                ProgressView().frame(maxWidth: .infinity)
+            } else if spotifyPlaylists.isEmpty {
+                Text("Keine Playlists gefunden.").font(.subheadline).foregroundStyle(t.textMuted)
+            } else {
+                ForEach(spotifyPlaylists) { pl in
+                    Button { importPlaylist(pl) } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "music.note.list").foregroundStyle(t.textMuted)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(pl.name).font(.subheadline.weight(.bold)).foregroundStyle(t.text).lineLimit(1)
+                                Text("\(pl.trackCount) Songs").font(.caption2).foregroundStyle(t.textMuted)
+                            }
+                            Spacer()
+                            if importingPlaylistId == pl.id { ProgressView().scaleEffect(0.8) }
+                            else { Image(systemName: "plus.circle").font(.title3).foregroundStyle(t.accent == t.text ? t.text : t.accent) }
+                        }
+                        .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.plain).disabled(importingPlaylistId != nil)
+                }
+            }
+        }
+        .padding(16).themedCard()
+        .task { await autoLoadPlaylists() }
+    }
+
+    private func autoLoadPlaylists() async {
+        guard spotify.isAuthorized, spotifyPlaylists.isEmpty, !spotifyBusy else { return }
+        spotifyBusy = true
+        defer { spotifyBusy = false }
+        do {
+            spotifyAuthorized = true
+            spotifyPlaylists = try await spotify.myPlaylists()
+        } catch { errorText = error.localizedDescription }
+    }
+
+    private func connectSpotify() {
+        spotifyBusy = true
+        Task {
+            defer { spotifyBusy = false }
+            do {
+                if !spotify.isAuthorized { try await spotify.authorize() }
+                spotifyAuthorized = true
+                spotifyPlaylists = try await spotify.myPlaylists()
+            } catch {
+                errorText = error.localizedDescription
+            }
+        }
+    }
+
+    private func importPlaylist(_ pl: SpotifyPlaylist) {
+        importingPlaylistId = pl.id
+        Task {
+            defer { importingPlaylistId = nil }
+            do {
+                let tracks = try await spotify.playlistTracks(pl.id)
+                var added = 0
+                for tr in tracks where !poolIDs.contains(tr.id) {
+                    pool.append(tr); added += 1
+                }
+                importInfo = "\(added) Songs aus \(pl.name) hinzugefügt"
+            } catch {
+                errorText = error.localizedDescription
+            }
+        }
     }
 
     // MARK: Suchen

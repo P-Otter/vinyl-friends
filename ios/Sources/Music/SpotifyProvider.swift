@@ -22,6 +22,14 @@ final class SpotifyProvider: MusicProvider {
         try await api.myPlaylists()
     }
 
+    /// Tracks einer Playlist (für den Pool-Import). Nur sinnvoll verwertbare
+    /// (Jahr bekannt), dedupliziert.
+    func playlistTracks(_ playlistId: String) async throws -> [Track] {
+        let raw = try await api.playlistTracks(playlistId)
+        var seen = Set<String>()
+        return raw.filter { $0.releaseYear > 0 && seen.insert($0.id).inserted }
+    }
+
     func loadTracks(settings: GameSettings) async throws -> [Track] {
         guard let playlist = selectedPlaylist else { throw SpotifyError.noPlaylistSelected }
         let raw = try await api.playlistTracks(playlist.id)
