@@ -45,45 +45,51 @@ struct HomeView: View {
 
                     themePicker
 
-                    Button {
-                        startSpotify()
+                    NavigationLink {
+                        PoolBuilderView()
                     } label: {
-                        Group {
-                            if spotifyBusy {
-                                ProgressView().tint(t.onAccent)
-                            } else {
-                                Label("Mit Spotify spielen", systemImage: "music.note")
-                                    .font(.title3.weight(.black))
-                            }
-                        }
-                        .foregroundStyle(t.onAccent)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            Capsule()
-                                .fill(t.ctaStyle)
-                                .themedShadow(t)
-                        )
+                        Label("Eigenen Pool bauen", systemImage: "music.note.list")
+                            .font(.title3.weight(.black))
+                            .foregroundStyle(t.onAccent)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Capsule().fill(t.ctaStyle).themedShadow(t))
                     }
                     .buttonStyle(.plain)
-                    .disabled(spotifyBusy)
 
-                    Button {
-                        music.provider = DemoProvider()
-                        goToSetup = true
-                    } label: {
-                        Label("Demo-Modus (ohne Account)", systemImage: "sparkles")
-                            .font(.headline.weight(.bold))
+                    HStack(spacing: 10) {
+                        Button {
+                            startSpotify()
+                        } label: {
+                            Group {
+                                if spotifyBusy {
+                                    ProgressView().tint(t.text)
+                                } else {
+                                    Label("Spotify", systemImage: "music.note")
+                                        .font(.subheadline.weight(.bold))
+                                }
+                            }
                             .foregroundStyle(t.text)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 13)
-                            .background(
-                                Capsule()
-                                    .fill(t.surface)
-                                    .overlay(Capsule().stroke(t.surfaceStroke, lineWidth: max(t.strokeWidth, 1)))
-                            )
+                            .padding(.vertical, 12)
+                            .background(Capsule().fill(t.surface).overlay(Capsule().stroke(t.surfaceStroke, lineWidth: max(t.strokeWidth, 1))))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(spotifyBusy)
+
+                        Button {
+                            music.provider = DemoProvider()
+                            goToSetup = true
+                        } label: {
+                            Label("Demo", systemImage: "sparkles")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(t.text)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Capsule().fill(t.surface).overlay(Capsule().stroke(t.surfaceStroke, lineWidth: max(t.strokeWidth, 1))))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
 
                     if let spotifyError {
                         Text(spotifyError)

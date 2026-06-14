@@ -21,6 +21,8 @@ struct HitsterFriendsApp: App {
                     NavigationStack { GameView() }
                 } else if ProcessInfo.processInfo.arguments.contains("-demoSetup") {
                     NavigationStack { PlayerSetupView() }
+                } else if ProcessInfo.processInfo.arguments.contains("-demoPool") {
+                    NavigationStack { PoolBuilderView() }
                 } else {
                     HomeView()
                 }
