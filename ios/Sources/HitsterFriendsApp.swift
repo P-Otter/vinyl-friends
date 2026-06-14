@@ -37,6 +37,9 @@ struct HitsterFriendsApp: App {
             .tint(themeStore.theme.accent)
             .preferredColorScheme(themeStore.theme.colorScheme)
             .onAppear {
+                let args = ProcessInfo.processInfo.arguments
+                if args.contains("-appStoreMode") { modeStore.mode = .appStore }
+                else if args.contains("-localMode") { modeStore.mode = .local }
                 if isDemoGame { seedDemoGame() }
             }
         }

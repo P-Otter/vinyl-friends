@@ -66,6 +66,19 @@ enum GamePhase: String, Codable {
     case setup, playing, bonus, steal, reveal, finished
 }
 
+/// Spielmodi.
+enum GameMode: String, Codable, CaseIterable, Identifiable {
+    case classic        // Wettlauf um Karten (+ optional Raten)
+    case plattenboerse  // Catan-Style: Dekaden-Abzeichen + Punkte
+    var id: String { rawValue }
+    var label: String { self == .classic ? "Klassik" : "Plattenbörse" }
+    var blurb: String {
+        self == .classic
+            ? "Sammle Karten, errate Songs."
+            : "Führe Jahrzehnte an — Abzeichen geben Punkte."
+    }
+}
+
 /// Ergebnis des Bonus-Ratens (Titel/Artist/Jahr) zu einer platzierten Karte.
 struct BonusResult: Codable, Hashable {
     var titleCorrect: Bool
