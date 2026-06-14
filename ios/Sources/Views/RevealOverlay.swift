@@ -8,6 +8,10 @@ struct RevealOverlay: View {
 
     private var t: AppTheme { themeStore.theme }
     private var stampColor: Color { result.correct ? t.good : t.bad }
+    private var stampText: String {
+        if result.isSteal { return result.correct ? "GEKLAUT! 🎯" : "DANEBEN!" }
+        return result.correct ? "RICHTIG!" : "DANEBEN!"
+    }
 
     /// Öffnet den Song in Spotify — exakte URI (importierte Tracks) oder Suche.
     private var spotifyURL: URL? {
@@ -22,7 +26,7 @@ struct RevealOverlay: View {
             Color.black.opacity(0.45).ignoresSafeArea()
 
             VStack(spacing: 16) {
-                Text(result.correct ? "RICHTIG!" : "DANEBEN!")
+                Text(stampText)
                     .font(.system(size: 26, weight: t.titleWeight == .light ? .regular : t.titleWeight, design: t.fontDesign))
                     .tracking(t.uppercaseTitles ? 2 : 0)
                     .foregroundStyle(stampColor)

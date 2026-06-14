@@ -58,10 +58,12 @@ struct GameSettings: Codable, Hashable {
     var requiredMastered: Int = 3
     // ± Jahre, innerhalb derer eine Jahresschätzung als richtig gilt.
     var yearTolerance: Int = 2
+    // Klauen: bei falschem Platzieren darf der nächste Spieler die Karte stehlen.
+    var stealEnabled: Bool = true
 }
 
 enum GamePhase: String, Codable {
-    case setup, playing, bonus, reveal, finished
+    case setup, playing, bonus, steal, reveal, finished
 }
 
 /// Ergebnis des Bonus-Ratens (Titel/Artist/Jahr) zu einer platzierten Karte.
@@ -96,4 +98,5 @@ struct PlacementResult: Codable, Hashable {
     var insertIndex: Int
     var correct: Bool
     var bonus: BonusResult?
+    var isSteal: Bool = false
 }

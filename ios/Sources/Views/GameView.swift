@@ -43,12 +43,17 @@ struct GameView: View {
 
     private var t: AppTheme { themeStore.theme }
 
+    /// Beim Klauen platziert der Dieb auf SEINER Timeline, sonst der aktive Spieler.
+    private var activePlayer: Player? {
+        engine.stealPlayer ?? engine.currentPlayer
+    }
+
     private var sortedCards: [Track] {
-        Scoring.sortByYear(engine.currentPlayer?.cards ?? [])
+        Scoring.sortByYear(activePlayer?.cards ?? [])
     }
 
     private var playerColor: Color {
-        Color(hex: engine.currentPlayer?.colorHex ?? "#888888")
+        Color(hex: activePlayer?.colorHex ?? "#888888")
     }
 
     var body: some View {
@@ -133,15 +138,20 @@ struct GameView: View {
 
     private var header: some View {
         VStack(spacing: 4) {
-            Text("RUNDE \(engine.round)")
+            Text(engine.phase == .steal ? "🎯 KLAU-CHANCE" : "RUNDE \(engine.round)")
                 .font(.caption2.weight(.bold))
                 .tracking(2)
-                .foregroundStyle(t.textMuted)
-            if let player = engine.currentPlayer {
+                .foregroundStyle(engine.phase == .steal ? t.highlight : t.textMuted)
+            if let player = activePlayer {
                 Text(t.uppercaseTitles ? player.name.uppercased() : player.name)
                     .font(.system(size: 32, weight: t.titleWeight, design: t.fontDesign))
                     .tracking(t.uppercaseTitles ? 1.5 : 0)
                     .foregroundStyle(playerColor)
+                if engine.phase == .steal {
+                    Text("klaut — richtig platzieren = Karte gestohlen!")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(t.textMuted)
+                }
             }
         }
     }
@@ -149,7 +159,7 @@ struct GameView: View {
     private var scoreRow: some View {
         HStack(spacing: 8) {
             ForEach(engine.players) { player in
-                let isActive = player.id == engine.currentPlayer?.id
+                let isActive = player.id == activePlayer?.id
                 let color = Color(hex: player.colorHex)
                 HStack(spacing: 6) {
                     Text(player.name)
@@ -192,9 +202,9 @@ struct GameView: View {
                     .opacity(AppConfig.iTunesPreviewEnabled ? 1 : 0.35)
                 Button {
                     stopPlayback()
-                    engine.skipTrack()
+                    if engine.phase == .steal { engine.skipSteal() } else { engine.skipTrack() }
                 } label: {
-                    Image(systemName: "forward.fill")
+                    Image(systemName: engine.phase == .steal ? "hand.raised.slash.fill" : "forward.fill")
                         .font(.system(size: 16, weight: .black))
                         .foregroundStyle(t.text)
                         .frame(width: 46, height: 46)
@@ -405,7 +415,11 @@ struct GameView: View {
         targetedGap = nil
         stopPlayback() // Song + Timer stoppen, Button zurücksetzen
         withAnimation(.spring(duration: 0.4)) {
-            engine.placeCard(insertIndex: index)
+            if engine.phase == .steal {
+                engine.stealPlace(insertIndex: index)
+            } else {
+                engine.placeCard(insertIndex: index)
+            }
         }
     }
 

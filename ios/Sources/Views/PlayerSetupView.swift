@@ -12,6 +12,7 @@ struct PlayerSetupView: View {
     @State private var bonusEnabled = true
     @State private var masteryThreshold = 2
     @State private var requiredMastered = 3
+    @State private var stealEnabled = true
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var gameStarted = false
@@ -224,6 +225,20 @@ struct PlayerSetupView: View {
             }
             .tint(t.highlight)
 
+            Divider().overlay(t.surfaceStroke.opacity(0.3))
+
+            Toggle(isOn: $stealEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Klauen 🎯")
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(t.text)
+                    Text("Platziert jemand falsch, darf der Nächste die Karte stehlen")
+                        .font(.caption2)
+                        .foregroundStyle(t.textMuted)
+                }
+            }
+            .tint(t.highlight)
+
             if bonusEnabled {
                 stepperRow(
                     title: "Davon richtig erraten",
@@ -370,6 +385,7 @@ struct PlayerSetupView: View {
         engine.settings.bonusEnabled = bonusEnabled
         engine.settings.masteryThreshold = masteryThreshold
         engine.settings.requiredMastered = bonusEnabled ? requiredMastered : 0
+        engine.settings.stealEnabled = stealEnabled
 
         do {
             let queue = try await provider.loadTracks(settings: engine.settings)

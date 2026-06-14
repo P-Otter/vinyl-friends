@@ -61,6 +61,18 @@ struct HitsterFriendsApp: App {
         let seedYears = [1975, 1991, 2014]
         engine.players[0].cards = DemoCatalog.tracks.filter { seedYears.contains($0.releaseYear) }
 
+        // Für Screenshots: falsch platzieren -> Klau-Phase.
+        if args.contains("-demoSteal") {
+            let sorted = Scoring.sortByYear(engine.players[0].cards)
+            if let track = engine.currentTrack {
+                for idx in 0...sorted.count
+                where !Scoring.isPlacementCorrect(sorted: sorted, track: track, insertIndex: idx) {
+                    engine.placeCard(insertIndex: idx)
+                    break
+                }
+            }
+        }
+
         // Für Screenshots direkt in die Bonus-Phase: aktuellen Track korrekt platzieren.
         if args.contains("-demoBonus") || args.contains("-demoReveal") {
             let sorted = Scoring.sortByYear(engine.players[0].cards)

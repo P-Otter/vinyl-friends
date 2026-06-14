@@ -14,7 +14,13 @@ final class GameEngine: ObservableObject {
     @Published private(set) var lastResult: PlacementResult?
     @Published private(set) var winnerId: UUID?
     @Published private(set) var finishReason: FinishReason?
+    @Published private(set) var stealerIdx: Int?
     private var startedAt: Date?
+
+    /// Spieler, der gerade klauen darf (oder nil).
+    var stealPlayer: Player? {
+        stealerIdx.flatMap { players.indices.contains($0) ? players[$0] : nil }
+    }
 
     enum FinishReason { case won, exhausted }
 
@@ -41,6 +47,7 @@ final class GameEngine: ObservableObject {
         lastResult = nil
         winnerId = nil
         finishReason = nil
+        stealerIdx = nil
         startedAt = Date()
         for i in players.indices {
             players[i].cards = []
@@ -64,10 +71,38 @@ final class GameEngine: ObservableObject {
         // Timeline, bevor man geraten hat. Erst nach Bonus bzw. Auflösung.
         if correct && settings.bonusEnabled {
             phase = .bonus
+        } else if correct {
+            insertPlacedCard()
+            phase = .reveal
+        } else if settings.stealEnabled && players.count > 1 {
+            // Falsch platziert → nächster Spieler darf klauen.
+            stealerIdx = (currentPlayerIdx + 1) % players.count
+            phase = .steal
         } else {
-            if correct { insertPlacedCard() }
             phase = .reveal
         }
+    }
+
+    /// Klau-Versuch des nächsten Spielers auf SEINER Timeline.
+    func stealPlace(insertIndex: Int) {
+        guard let sIdx = stealerIdx, players.indices.contains(sIdx),
+              let track = currentTrack else { return }
+        var stealer = players[sIdx]
+        let sorted = Scoring.sortByYear(stealer.cards)
+        let correct = Scoring.isPlacementCorrect(sorted: sorted, track: track, insertIndex: insertIndex)
+        stealer.attempts += 1
+        if correct {
+            stealer.hits += 1
+            stealer.cards = Scoring.insertCard(sorted: sorted, track: track)
+        }
+        players[sIdx] = stealer
+        lastResult = PlacementResult(track: track, playerId: stealer.id, insertIndex: insertIndex, correct: correct, isSteal: true)
+        phase = .reveal
+    }
+
+    /// Niemand klaut — Karte verfällt.
+    func skipSteal() {
+        phase = .reveal
     }
 
     /// Die zuletzt korrekt platzierte Karte jetzt sichtbar in die Timeline aufnehmen.
@@ -112,6 +147,7 @@ final class GameEngine: ObservableObject {
     }
 
     func nextPlayer() {
+        stealerIdx = nil
         // Wer (falls jemand) die Siegbedingung erfüllt — diesen Spieler krönen wir.
         var satisfier: Player?
         switch settings.winCondition {
@@ -173,6 +209,7 @@ final class GameEngine: ObservableObject {
         lastResult = nil
         winnerId = nil
         finishReason = nil
+        stealerIdx = nil
         startedAt = nil
         for i in players.indices {
             players[i].cards = []
