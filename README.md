@@ -1,17 +1,34 @@
-# Hitster Friends
+# Vinyl Friends
 
-Privates Party-Musikspiel für den eigenen Freundeskreis (max. 5 Spotify-Premium-Accounts,
-**nie öffentlich** — siehe [PLAN.md](PLAN.md) für Scope & ToS-Hintergrund).
+Party-Musikspiel: Song hören, Erscheinungsjahr schätzen, Karte chronologisch in die
+eigene Zeitleiste einsortieren. **Live: <https://p-otter.github.io/vinyl-friends/>**
 
-Web-App: eine geteilte Spotify-Playlist wird zum Hitster-artigen Spiel. MVP-Modus:
-**Klassisch / relative Ordnung** — Song läuft, Karte chronologisch zwischen die eigenen
-Karten einsortieren, keine Jahreszahlen raten (Jahr erst beim Reveal).
+Zwei Spielarten in einer App:
+
+1. **Eigener Pool (Standard)** — ganz ohne Konto, läuft überall (auch iPhone/iPad).
+   Pool aus fertigen Song-Packs, iTunes-Suche oder eingefügter Songliste;
+   gespielt wird mit offiziellen 30-Sekunden-Hörproben.
+2. **Spotify-Modus (privat)** — eure echten Playlists in voller Länge.
+   Braucht Spotify Premium beim Host + Freischaltung im eigenen Spotify-Dashboard
+   (max. 5 Nutzer, **nie öffentlich** — siehe [PLAN.md](PLAN.md) für ToS-Hintergrund).
+
+Im selben Repo liegt unter [`ios/`](ios/) die native SwiftUI-iOS-App (XcodeGen).
 
 ## Stack
-React + Vite + TypeScript · Tailwind · Zustand · React Router · Spotify OAuth (PKCE,
-client-only) · Spotify Web Playback SDK. Kein Backend.
+React + Vite + TypeScript · Tailwind · Zustand · React Router · iTunes-Search-API
+(30s-Previews, JSONP) · optional Spotify OAuth (PKCE, client-only) + Web Playback SDK.
+Kein Backend. Deploy: GitHub Actions → GitHub Pages.
 
-## Voraussetzungen
+## Sofort spielen (ohne alles)
+<https://p-otter.github.io/vinyl-friends/> öffnen → **„Spielen — eigenen Pool bauen"**.
+Kein Konto, kein Setup. Auf dem iPhone/iPad: in Safari öffnen → Teilen-Menü →
+**„Zum Home-Bildschirm"** — dann startet es wie eine App.
+
+---
+
+Der Rest dieses Abschnitts betrifft nur den optionalen **Spotify-Modus** und die lokale Entwicklung.
+
+## Voraussetzungen (nur Spotify-Modus / Entwicklung)
 - Node ≥ 18 (getestet mit 25)
 - **Spotify Premium** beim Host (Web Playback SDK spielt sonst nicht)
 - Kein Safari-Privatmodus (DRM-Beschränkung)
