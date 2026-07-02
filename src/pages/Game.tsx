@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameState } from '../hooks/useGameState';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
@@ -56,11 +56,14 @@ export default function Game() {
   const [busy, setBusy] = useState(false);
 
   // Neue Runde → lokalen Rundenzustand zurücksetzen + Hörprobe stoppen
-  // (sonst liefe der alte Song nach einem Skip weiter).
+  // (sonst liefe der alte Song nach einem Skip weiter). Der Generations-
+  // Zähler invalidiert zusätzlich noch schwebende startSong-Aufrufe.
   useEffect(() => {
+    playGenRef.current += 1;
     setStarted(false);
     setSelectedGap(null);
     setPlayError(null);
+    setBusy(false);
     preview.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrackIndex]);
@@ -72,19 +75,29 @@ export default function Game() {
 
   const targetCards = settings.winCondition.type === 'cards' ? settings.winCondition.n : 10;
 
+  // Generationszähler gegen das Skip-Race: startet jemand einen Song und
+  // skippt, während die Hörprobe noch lädt, darf das verspätete Ergebnis
+  // weder abspielen noch die NEUE Runde als „gestartet" markieren.
+  const playGenRef = useRef(0);
+
   const startSong = async () => {
     if (!track) return;
+    const gen = ++playGenRef.current;
     setBusy(true);
     setPlayError(null);
     try {
       if (isPreviewMode) {
+        // Verspätetes Abspielen nach Skip verhindert der Player selbst (Token).
         await preview.play(track);
+        if (gen !== playGenRef.current) return;
       } else {
         const offset = settings.randomOffset ? randomOffsetMs(track.durationMs) : 0;
         await spotify.play(track.uri, offset);
+        if (gen !== playGenRef.current) return;
       }
       setStarted(true);
     } catch (e) {
+      if (gen !== playGenRef.current) return;
       const msg = e instanceof Error ? e.message : String(e);
       if (isPreviewMode) {
         setPlayError(msg + ' — Du kannst überspringen, ohne den Zug zu verlieren.');
@@ -146,7 +159,11 @@ export default function Game() {
           <span className="h-3 w-3 rounded-full" style={{ backgroundColor: activePlayer.color }} />
           {activePlayer.name} ist dran
         </span>
-        <button className="text-slate-400 underline hover:text-slate-200" onClick={skipTrack}>
+        <button
+          className="text-slate-400 underline hover:text-slate-200 disabled:opacity-40"
+          onClick={skipTrack}
+          disabled={busy}
+        >
           Skip
         </button>
       </header>

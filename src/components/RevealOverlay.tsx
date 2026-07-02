@@ -8,6 +8,7 @@ type Props = {
 
 function sourceLabel(track: Track): string {
   if (track.source === 'friends') return 'aus Friends-Pool';
+  if (track.source === 'local') return 'aus deinem Pool';
   const id = track.source.slice('theme:'.length);
   const theme = themeById(id);
   return theme ? `aus Theme: ${theme.name}` : 'aus Theme-Pack';
@@ -16,7 +17,10 @@ function sourceLabel(track: Track): string {
 export default function RevealOverlay({ result, onNext }: Props) {
   const { track, correct } = result;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    // overflow-y-auto + min-h-full: auf kleinen Viewports (iPhone quer) wird
+    // das Overlay scrollbar, statt den Weiter-Button oben/unten abzuschneiden.
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70">
+      <div className="flex min-h-full items-center justify-center p-4">
       <div className="w-full max-w-sm rounded-3xl bg-panel p-8 text-center shadow-2xl">
         {track.albumArt ? (
           <img
@@ -31,14 +35,16 @@ export default function RevealOverlay({ result, onNext }: Props) {
         )}
         <div className="mb-2 text-5xl font-extrabold tracking-widest">
           {track.releaseYear || '????'}
-          {track.releaseDatePrecision !== 'day' && track.releaseYear > 0 && (
-            <span
-              className="align-super text-2xl text-accent"
-              title="lt. Spotify-Album, kann bei Compilations abweichen"
-            >
-              *
-            </span>
-          )}
+          {track.source !== 'local' &&
+            track.releaseDatePrecision !== 'day' &&
+            track.releaseYear > 0 && (
+              <span
+                className="align-super text-2xl text-accent"
+                title="lt. Spotify-Album, kann bei Compilations abweichen"
+              >
+                *
+              </span>
+            )}
         </div>
         <div className="text-lg font-semibold">{track.name}</div>
         <div className="text-slate-400">{track.artist}</div>
@@ -62,6 +68,7 @@ export default function RevealOverlay({ result, onNext }: Props) {
         <button className="btn-primary mt-6 w-full" onClick={onNext}>
           Nächste*r Spieler*in →
         </button>
+      </div>
       </div>
     </div>
   );

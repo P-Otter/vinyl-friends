@@ -11,13 +11,27 @@ type PoolStore = {
   clear: () => void;
 };
 
+// Duplikat-Schlüssel über Quellen hinweg: derselbe Song steckt in mehreren
+// Packs (mit unterschiedlichen IDs) und kommt auch über die Suche rein —
+// nach Künstler+Titel deduplizieren, damit er nie zweimal in der Queue landet.
+function songKey(t: Track): string {
+  return `${t.artist}|${t.name}`.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
 export const usePool = create<PoolStore>()(
   persist(
     (set, get) => ({
       pool: [],
       add: (tracks) => {
-        const existing = new Set(get().pool.map((t) => t.id));
-        const fresh = tracks.filter((t) => !existing.has(t.id));
+        const existingIds = new Set(get().pool.map((t) => t.id));
+        const existingSongs = new Set(get().pool.map(songKey));
+        const fresh: Track[] = [];
+        for (const t of tracks) {
+          if (existingIds.has(t.id) || existingSongs.has(songKey(t))) continue;
+          existingIds.add(t.id);
+          existingSongs.add(songKey(t));
+          fresh.push(t);
+        }
         if (fresh.length > 0) set({ pool: [...get().pool, ...fresh] });
         return fresh.length;
       },

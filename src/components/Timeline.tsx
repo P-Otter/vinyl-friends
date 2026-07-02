@@ -21,7 +21,7 @@ function Timeline({ cards, selectedGap, onSelectGap, disabled }: Props) {
       onClick={() => onSelectGap(index)}
       aria-label={`hier einsortieren (Position ${index})`}
       className={
-        'mx-0.5 flex h-24 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-dashed text-xs transition ' +
+        'mx-0.5 flex h-24 w-10 shrink-0 items-center justify-center rounded-lg border-2 border-dashed text-xs transition ' +
         (selectedGap === index
           ? 'border-accent bg-accent/20 text-accent'
           : 'border-slate-600 text-slate-600 hover:border-slate-400 hover:text-slate-400') +

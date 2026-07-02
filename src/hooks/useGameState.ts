@@ -208,6 +208,16 @@ export const useGameState = create<GameStore>()(
     }),
     {
       name: 'hf_game_state',
+      // Alte Spielstände können neue Settings-Felder (z. B. musicSource) noch
+      // nicht haben — beim Laden mit den Defaults verschmelzen statt undefined.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<GameState>;
+        return {
+          ...current,
+          ...p,
+          settings: { ...current.settings, ...(p.settings ?? {}) },
+        };
+      },
       // Nur das persistieren was Session-Recovery braucht — keine Funktionen.
       partialize: (s) => ({
         phase: s.phase,

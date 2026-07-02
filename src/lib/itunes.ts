@@ -42,7 +42,13 @@ function jsonpSearch(term: string, limit: number): Promise<ItunesResponse> {
       window.clearTimeout(timer);
     };
     const timer = window.setTimeout(() => {
-      cleanup();
+      // Callback NICHT löschen, sondern durch No-op ersetzen: ein bereits
+      // ladendes Script kann nach dem Timeout noch antworten — ohne Funktion
+      // gäbe das einen uncaught ReferenceError in der Konsole.
+      (window as unknown as Record<string, unknown>)[cbName] = () => {
+        delete (window as unknown as Record<string, unknown>)[cbName];
+      };
+      script.remove();
       reject(new Error('iTunes-Suche: Zeitüberschreitung (kein Netz?)'));
     }, 12_000);
     (window as unknown as Record<string, unknown>)[cbName] = (data: ItunesResponse) => {

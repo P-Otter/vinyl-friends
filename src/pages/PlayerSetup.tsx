@@ -106,7 +106,7 @@ export default function PlayerSetup() {
             />
             <div className="flex gap-1">
               <button
-                className="rounded bg-panel2 px-2 py-1 text-xs disabled:opacity-30"
+                className="rounded bg-panel2 px-3 py-2 text-sm disabled:opacity-30"
                 onClick={() => move(i, -1)}
                 disabled={i === 0}
                 title="nach oben"
@@ -114,7 +114,7 @@ export default function PlayerSetup() {
                 ↑
               </button>
               <button
-                className="rounded bg-panel2 px-2 py-1 text-xs disabled:opacity-30"
+                className="rounded bg-panel2 px-3 py-2 text-sm disabled:opacity-30"
                 onClick={() => move(i, 1)}
                 disabled={i === list.length - 1}
                 title="nach unten"
@@ -123,7 +123,7 @@ export default function PlayerSetup() {
               </button>
             </div>
             <button
-              className="rounded bg-panel2 px-2 py-1 text-xs text-red-300 disabled:opacity-30"
+              className="rounded bg-panel2 px-3 py-2 text-sm text-red-300 disabled:opacity-30"
               onClick={() => remove(p.id)}
               disabled={list.length <= 2}
               title="entfernen"

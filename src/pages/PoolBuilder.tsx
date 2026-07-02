@@ -13,7 +13,8 @@ type PackSong = { title: string; artist: string; year: number };
 type Pack = { id: string; name: string; emoji: string; songs: PackSong[] };
 
 const PACKS = (packsData as { packs: Pack[] }).packs;
-const MIN_SONGS = 8;
+// Import-Limit: die iTunes-API drosselt nach ~50 schnellen Requests pro IP.
+const MAX_IMPORT_LINES = 30;
 
 function packTrack(pack: Pack, song: PackSong): Track {
   return {
@@ -47,8 +48,11 @@ export default function PoolBuilder() {
   const [error, setError] = useState<string | null>(null);
   const [targetCards, setTargetCards] = useState(5);
 
-  // Suche mit 400ms-Debounce (wie iOS).
+  // Suche mit 400ms-Debounce (wie iOS). Der Sequenz-Zähler verwirft
+  // verspätete Antworten älterer Requests (JSONP ist nicht abbrechbar) —
+  // sonst überschriebe eine langsame alte Suche die neuen Treffer.
   const searchTimer = useRef<number | null>(null);
+  const searchSeq = useRef(0);
   useEffect(() => {
     if (searchTimer.current) window.clearTimeout(searchTimer.current);
     const q = query.trim();
@@ -57,11 +61,21 @@ export default function PoolBuilder() {
       return;
     }
     searchTimer.current = window.setTimeout(() => {
+      const seq = ++searchSeq.current;
       setSearching(true);
       searchSongs(q)
-        .then(setResults)
-        .catch(() => setError('Suche fehlgeschlagen — kein Netz?'))
-        .finally(() => setSearching(false));
+        .then((hits) => {
+          if (seq !== searchSeq.current) return;
+          setResults(hits);
+          setError(null);
+        })
+        .catch(() => {
+          if (seq !== searchSeq.current) return;
+          setError('Suche fehlgeschlagen — kein Netz?');
+        })
+        .finally(() => {
+          if (seq === searchSeq.current) setSearching(false);
+        });
     }, 400);
     return () => {
       if (searchTimer.current) window.clearTimeout(searchTimer.current);
@@ -69,6 +83,9 @@ export default function PoolBuilder() {
   }, [query]);
 
   const poolIds = new Set(pool.map((t) => t.id));
+  // Gleiche Formel wie die Start-Validierung in PlayerSetup — sonst ließe der
+  // Weiter-Button Pools durch, die dort erst beim Start abgelehnt würden.
+  const minNeeded = Math.max(targetCards + 3, 8);
 
   const addPack = (pack: Pack) => {
     const added = add(pack.songs.map((s) => packTrack(pack, s)));
@@ -81,17 +98,21 @@ export default function PoolBuilder() {
   };
 
   const runImport = async () => {
-    const lines = pasteText
+    const allLines = pasteText
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean);
-    if (lines.length === 0) return;
+    if (allLines.length === 0) return;
+    // iTunes drosselt schnelle Request-Serien — pro Durchgang begrenzen und
+    // zwischen den Anfragen kurz warten, statt in die Sperre zu laufen.
+    const lines = allLines.slice(0, MAX_IMPORT_LINES);
+    const skipped = allLines.length - lines.length;
     setImporting(true);
     setInfo(null);
     setError(null);
     let added = 0;
     let missed = 0;
-    for (const line of lines) {
+    for (const [i, line] of lines.entries()) {
       try {
         const hits = await searchSongs(line, 1);
         if (hits[0]) added += add([hits[0]]);
@@ -99,8 +120,12 @@ export default function PoolBuilder() {
       } catch {
         missed += 1;
       }
+      if (i < lines.length - 1) await new Promise((r) => setTimeout(r, 700));
     }
-    setInfo(`${added} hinzugefügt${missed > 0 ? `, ${missed} nicht gefunden` : ''}`);
+    setInfo(
+      `${added} hinzugefügt${missed > 0 ? `, ${missed} nicht gefunden` : ''}` +
+        (skipped > 0 ? ` — max. ${MAX_IMPORT_LINES} Zeilen pro Durchgang, ${skipped} übrig` : ''),
+    );
     setImporting(false);
   };
 
@@ -197,7 +222,7 @@ export default function PoolBuilder() {
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
               rows={6}
-              className="w-full rounded-lg bg-panel2 px-3 py-2 text-sm"
+              className="w-full rounded-lg bg-panel2 px-3 py-2 text-base"
             />
             <button
               className="btn-primary w-full"
@@ -234,7 +259,10 @@ export default function PoolBuilder() {
                   <span className="block truncate text-sm">{track.name}</span>
                   <span className="block truncate text-xs text-slate-500">{track.artist}</span>
                 </span>
-                <button className="px-2 text-slate-500 hover:text-red-300" onClick={() => remove(track.id)}>
+                <button
+                  className="min-h-[40px] min-w-[40px] text-slate-500 hover:text-red-300"
+                  onClick={() => remove(track.id)}
+                >
                   ✕
                 </button>
               </div>
@@ -260,9 +288,9 @@ export default function PoolBuilder() {
         <button className="btn-ghost" onClick={() => navigate('/')}>
           ← zurück
         </button>
-        <button className="btn-primary" onClick={start} disabled={pool.length < MIN_SONGS}>
-          {pool.length < MIN_SONGS
-            ? `Mind. ${MIN_SONGS} Songs (noch ${MIN_SONGS - pool.length})`
+        <button className="btn-primary" onClick={start} disabled={pool.length < minNeeded}>
+          {pool.length < minNeeded
+            ? `Mind. ${minNeeded} Songs (noch ${minNeeded - pool.length})`
             : `Weiter — ${pool.length} Songs`}
         </button>
       </div>

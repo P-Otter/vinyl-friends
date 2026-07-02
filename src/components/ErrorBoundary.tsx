@@ -33,17 +33,19 @@ export default class ErrorBoundary extends Component<Props, State> {
                 className="btn-ghost"
                 onClick={() => {
                   this.setState({ error: null });
-                  window.location.href = '/';
+                  // BASE_URL statt '/': unter GitHub Pages (/vinyl-friends/)
+                  // führt '/' aus der App heraus.
+                  window.location.href = import.meta.env.BASE_URL;
                 }}
               >
-                Zurück zum Login
+                Zurück zum Start
               </button>
               <button
                 className="btn-ghost"
                 onClick={() => {
                   // Persistierten Spielstand löschen — häufige Crash-Ursache nach Schema-Änderungen.
                   localStorage.removeItem('hf_game_state');
-                  window.location.href = '/';
+                  window.location.href = import.meta.env.BASE_URL;
                 }}
               >
                 Spielstand zurücksetzen & neu laden

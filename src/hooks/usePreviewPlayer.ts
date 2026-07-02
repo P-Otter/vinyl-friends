@@ -24,6 +24,10 @@ const SILENT_WAV =
 export function usePreviewPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const unlockedRef = useRef(false);
+  // Jeder play()-Aufruf bekommt ein Token; stop()/neues play() entwerten es.
+  // Verhindert, dass eine langsam aufgelöste Hörprobe (JSONP) nach einem
+  // Skip/Trackwechsel verspätet losspielt und den aktuellen Song überschreibt.
+  const playTokenRef = useRef(0);
   const [state, setState] = useState<PreviewState>({
     status: 'ready',
     isPlaying: false,
@@ -70,6 +74,7 @@ export function usePreviewPlayer() {
   const play = useCallback(async (track: Track) => {
     const audio = audioRef.current;
     if (!audio) return;
+    const token = ++playTokenRef.current;
     let url = track.previewUrl;
     if (!url) {
       // Gleich folgt ein await (Hörproben-Auflösung) — vorher das Element
@@ -80,6 +85,7 @@ export function usePreviewPlayer() {
         void audio.play().catch(() => {});
       }
       url = await resolvePreviewUrl(track.artist, track.name, track.id);
+      if (token !== playTokenRef.current) return; // inzwischen geskippt/gestoppt
     }
     if (audio.src !== url) {
       audio.src = url;
@@ -98,6 +104,7 @@ export function usePreviewPlayer() {
   }, []);
 
   const stop = useCallback(() => {
+    playTokenRef.current += 1; // schwebende play()-Aufrufe entwerten
     const audio = audioRef.current;
     if (!audio) return;
     audio.pause();
