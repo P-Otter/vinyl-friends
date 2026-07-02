@@ -7,8 +7,10 @@ struct HomeView: View {
     @EnvironmentObject private var modeStore: AppModeStore
 
     @State private var goToSetup = false
+    #if !APPSTORE
     @State private var spotifyBusy = false
     @State private var spotifyError: String?
+    #endif
     @AppStorage("onboardingDone") private var onboardingDone = false
     @State private var showOnboarding = false
 
@@ -20,6 +22,9 @@ struct HomeView: View {
                 ThemedBackground()
 
                 VStack(spacing: 16) {
+                    #if !APPSTORE
+                    // Modus-Wechsel nur in der privaten Variante (Lokal ⇄ App Store).
+                    // Im Store-Build gibt es nur einen Modus → kein toter Button.
                     HStack {
                         Spacer()
                         Button {
@@ -33,6 +38,7 @@ struct HomeView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    #endif
                     Spacer()
 
                     Image(systemName: "crown.fill")
@@ -74,6 +80,7 @@ struct HomeView: View {
                     .buttonStyle(.plain)
 
                     HStack(spacing: 10) {
+                        #if !APPSTORE
                         if modeStore.spotifyEnabled {
                             Button {
                                 startSpotify()
@@ -94,8 +101,11 @@ struct HomeView: View {
                             .buttonStyle(.plain)
                             .disabled(spotifyBusy)
                         }
+                        #endif
 
                         Button {
+                            // Demo läuft in jedem Modus über die abofreie 30s-iTunes-
+                            // Vorschau — sofort hörbar, ohne Apple-Music-Abo/-Freigabe.
                             music.provider = DemoProvider()
                             goToSetup = true
                         } label: {
@@ -109,12 +119,14 @@ struct HomeView: View {
                         .buttonStyle(.plain)
                     }
 
+                    #if !APPSTORE
                     if let spotifyError {
                         Text(spotifyError)
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(t.bad)
                             .multilineTextAlignment(.center)
                     }
+                    #endif
                 }
                 .padding(24)
             }
@@ -126,6 +138,7 @@ struct HomeView: View {
         }
     }
 
+    #if !APPSTORE
     private func startSpotify() {
         guard modeStore.spotifyEnabled else { return } // im App-Store-Modus nie
         spotifyError = nil
@@ -144,6 +157,7 @@ struct HomeView: View {
             }
         }
     }
+    #endif
 
     /// Style-Wähler — die Auswahl wird dauerhaft gespeichert.
     private var themePicker: some View {

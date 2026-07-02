@@ -16,7 +16,8 @@ enum SongSearch {
             URLQueryItem(name: "entity", value: "song"),
             URLQueryItem(name: "limit", value: String(limit)),
         ]
-        let (data, _) = try await URLSession.shared.data(from: comps.url!)
+        guard let url = comps.url else { return [] }
+        let (data, _) = try await URLSession.shared.data(from: url)
         let response = try JSONDecoder().decode(Response.self, from: data)
 
         var seen = Set<String>()

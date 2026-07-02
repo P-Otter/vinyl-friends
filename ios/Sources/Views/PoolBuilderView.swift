@@ -7,10 +7,16 @@ struct PoolBuilderView: View {
     @EnvironmentObject private var themeStore: ThemeStore
     @EnvironmentObject private var modeStore: AppModeStore
 
-    enum Mode: String { case spotify = "Spotify", search = "Suchen", paste = "Liste" }
+    enum Mode: String {
+        case search = "Suchen", paste = "Liste"
+        #if !APPSTORE
+        case spotify = "Spotify"
+        #endif
+    }
     enum SortBy: String, CaseIterable { case added = "Zuletzt", year = "Jahr", title = "Titel" }
 
-    @State private var mode: Mode = .spotify
+    // Start mit .search (immer ein gültiger Tab) — kein kurzes leeres Picker-Segment.
+    @State private var mode: Mode = .search
     @State private var query = ""
     @State private var results: [Track] = []
     @State private var searching = false
@@ -19,13 +25,14 @@ struct PoolBuilderView: View {
     @State private var importInfo: String?
     @State private var pool: [Track] = []
 
-    // Spotify-Import (nur private Version) — Provider erst bei Bedarf erzeugen,
-    // damit im App-Store-Modus KEIN Spotify-Objekt entsteht.
+    // Spotify-Import (nur private Version) — im APPSTORE-Build komplett raus.
+    #if !APPSTORE
     @State private var spotify: SpotifyProvider?
     @State private var spotifyAuthorized = false
     @State private var spotifyPlaylists: [SpotifyPlaylist] = []
     @State private var spotifyBusy = false
     @State private var importingPlaylistId: String?
+    #endif
     @State private var sortBy: SortBy = .added
     @State private var poolFilter = ""
     @State private var gameStarted = false
@@ -34,7 +41,11 @@ struct PoolBuilderView: View {
     private var t: AppTheme { themeStore.theme }
     private var poolIDs: Set<String> { Set(pool.map(\.id)) }
     private var modes: [Mode] {
-        modeStore.spotifyEnabled ? [.spotify, .search, .paste] : [.search, .paste]
+        #if APPSTORE
+        return [.search, .paste]
+        #else
+        return modeStore.spotifyEnabled ? [.spotify, .search, .paste] : [.search, .paste]
+        #endif
     }
 
     private var sortedPool: [Track] {
@@ -61,8 +72,18 @@ struct PoolBuilderView: View {
                     }
                     .pickerStyle(.segmented)
 
+                    // Bestätigung (z. B. Pack hinzugefügt) tab-unabhängig anzeigen.
+                    if let importInfo {
+                        Label(importInfo, systemImage: "checkmark.circle.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(t.good)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
                     switch mode {
+                    #if !APPSTORE
                     case .spotify: spotifyCard
+                    #endif
                     case .search: searchCard
                     case .paste: pasteCard
                     }
@@ -126,6 +147,7 @@ struct PoolBuilderView: View {
     }
 
     // MARK: Spotify-Import (private Version)
+    #if !APPSTORE
 
     private var spotifyCard: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -223,6 +245,7 @@ struct PoolBuilderView: View {
             }
         }
     }
+    #endif
 
     // MARK: Suchen
 
@@ -297,9 +320,7 @@ struct PoolBuilderView: View {
             }
             .buttonStyle(.plain)
             .disabled(importing || pasteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            if let importInfo {
-                Text(importInfo).font(.caption.weight(.semibold)).foregroundStyle(t.textMuted)
-            }
+            // importInfo wird global (unter dem Tab-Picker) angezeigt.
         }
         .padding(16).themedCard()
     }
@@ -358,7 +379,10 @@ struct PoolBuilderView: View {
 
     private var startBar: some View {
         Button {
-            let provider = CatalogProvider(pool: pool)
+            // App-Store-Modus spielt über Apple Music (MusicKit), sonst iTunes-Vorschau.
+            let provider: any MusicProvider = modeStore.mode == .appStore
+                ? AppleMusicProvider(pool: pool)
+                : CatalogProvider(pool: pool)
             music.provider = provider
             gameStarted = true
         } label: {

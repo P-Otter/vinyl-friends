@@ -13,12 +13,28 @@ struct RevealOverlay: View {
         return result.correct ? "RICHTIG!" : "DANEBEN!"
     }
 
-    /// Öffnet den Song in Spotify — exakte URI (importierte Tracks) oder Suche.
-    private var spotifyURL: URL? {
+    /// Öffnet den Song zum Weiterhören im jeweils passenden Dienst.
+    /// App-Store-Build: Apple Music (die Wiedergabe-Basis dort) — restlos Spotify-frei.
+    /// Lokal/privat: Spotify (exakte URI importierter Tracks oder Suche).
+    private var listenURL: URL? {
+        #if APPSTORE
+        let q = "\(result.track.artist) \(result.track.name)"
+            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        return URL(string: "https://music.apple.com/search?term=\(q)")
+        #else
         if result.track.uri.hasPrefix("spotify:") { return URL(string: result.track.uri) }
         let q = "\(result.track.artist) \(result.track.name)"
             .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
         return URL(string: "https://open.spotify.com/search/\(q)")
+        #endif
+    }
+
+    private var listenLabel: String {
+        #if APPSTORE
+        return "In Apple Music"
+        #else
+        return "Auf Spotify"
+        #endif
     }
 
     var body: some View {
@@ -58,11 +74,11 @@ struct RevealOverlay: View {
                 }
 
                 HStack(spacing: 10) {
-                    if let url = spotifyURL {
+                    if let url = listenURL {
                         Button {
                             openURL(url)
                         } label: {
-                            Label("Auf Spotify", systemImage: "play.circle.fill")
+                            Label(listenLabel, systemImage: "play.circle.fill")
                                 .font(.subheadline.weight(.bold))
                                 .foregroundStyle(t.text)
                                 .padding(.horizontal, 18)

@@ -1,3 +1,4 @@
+#if !APPSTORE  // im App-Store-Build komplett ausgeschlossen
 // Spotify Web API: eigene Playlists und Playlist-Tracks (mit Pagination) —
 // portiert aus src/lib/spotify-api.ts der Web-App.
 import Foundation
@@ -133,3 +134,4 @@ final class SpotifyAPI {
         let album: Album?
     }
 }
+#endif

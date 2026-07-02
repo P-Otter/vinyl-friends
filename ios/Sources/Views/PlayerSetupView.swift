@@ -5,7 +5,13 @@ struct PlayerSetupView: View {
     @EnvironmentObject private var music: MusicSession
     @EnvironmentObject private var themeStore: ThemeStore
 
-    @State private var names: [String] = ["", ""]
+    /// Eigenes Modell mit stabiler ID — verhindert das Index-out-of-range-Risiko
+    /// von ForEach(indices)+remove(at:) beim Entfernen einer Zeile.
+    private struct PlayerDraft: Identifiable {
+        let id = UUID()
+        var name = ""
+    }
+    @State private var drafts: [PlayerDraft] = [PlayerDraft(), PlayerDraft()]
     @State private var targetCards = 5
     @State private var snippetSeconds = 20
     @State private var cardLook: TimelineCardStyle = .classic
@@ -17,19 +23,34 @@ struct PlayerSetupView: View {
     @State private var errorMessage: String?
     @State private var gameStarted = false
 
-    // Spotify: Playlist-Auswahl
+    // Spotify: Playlist-Auswahl — im APPSTORE-Build komplett raus.
+    #if !APPSTORE
     @State private var playlists: [SpotifyPlaylist] = []
     @State private var playlistsLoading = false
     @State private var selectedPlaylist: SpotifyPlaylist?
+    private var spotify: SpotifyProvider? { music.provider as? SpotifyProvider }
+    /// Im Spotify-Direktmodus erst spielbar, wenn eine Playlist gewählt ist.
+    private var spotifyNeedsPlaylist: Bool { spotify != nil && selectedPlaylist == nil }
+    #else
+    private var spotifyNeedsPlaylist: Bool { false }
+    #endif
 
     private var t: AppTheme { themeStore.theme }
 
-    private var spotify: SpotifyProvider? { music.provider as? SpotifyProvider }
-
     private var validNames: [String] {
-        names
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+        drafts
+            .map { $0.name.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
+    }
+
+    /// Obergrenze für „davon erraten": Geklaute Karten zählen nie als gemeistert,
+    /// darum muss bei aktivem Klauen mindestens eine Karte ungemeistert sein dürfen.
+    private var masteredMax: Int {
+        max(1, stealEnabled ? targetCards - 1 : targetCards)
+    }
+
+    private func clampMastered() {
+        if requiredMastered > masteredMax { requiredMastered = masteredMax }
     }
 
     var body: some View {
@@ -38,9 +59,11 @@ struct PlayerSetupView: View {
 
             ScrollView {
                 VStack(spacing: 20) {
+                    #if !APPSTORE
                     if spotify != nil {
                         playlistCard
                     }
+                    #endif
                     playersCard
                     winCard
                     audioCard
@@ -62,11 +85,14 @@ struct PlayerSetupView: View {
         .onAppear {
             if music.provider == nil { music.provider = DemoProvider() }
         }
+        #if !APPSTORE
         .task {
             await loadPlaylistsIfNeeded()
         }
+        #endif
     }
 
+    #if !APPSTORE
     private var playlistCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("SPOTIFY-PLAYLIST")
@@ -125,6 +151,7 @@ struct PlayerSetupView: View {
             errorMessage = error.localizedDescription
         }
     }
+    #endif
 
     private var playersCard: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -133,18 +160,19 @@ struct PlayerSetupView: View {
                 .tracking(2)
                 .foregroundStyle(t.textMuted)
 
-            ForEach(names.indices, id: \.self) { i in
+            ForEach($drafts) { $draft in
+                let idx = drafts.firstIndex { $0.id == draft.id } ?? 0
                 HStack(spacing: 10) {
                     Circle()
-                        .fill(Color(hex: t.playerColors[i % t.playerColors.count]))
+                        .fill(Color(hex: t.playerColors[idx % t.playerColors.count]))
                         .frame(width: 14, height: 14)
                         .overlay(Circle().stroke(t.surfaceStroke, lineWidth: min(t.strokeWidth, 1.5)))
-                    TextField("Spieler \(i + 1)", text: $names[i])
+                    TextField("Spieler \(idx + 1)", text: $draft.name)
                         .foregroundStyle(t.text)
                         .font(.body.weight(.semibold))
-                    if names.count > 2 {
+                    if drafts.count > 2 {
                         Button {
-                            names.remove(at: i)
+                            drafts.removeAll { $0.id == draft.id }
                         } label: {
                             Image(systemName: "minus.circle.fill")
                                 .foregroundStyle(t.textMuted)
@@ -164,9 +192,9 @@ struct PlayerSetupView: View {
                 )
             }
 
-            if names.count < 8 {
+            if drafts.count < 8 {
                 Button {
-                    withAnimation(.spring(duration: 0.3)) { names.append("") }
+                    withAnimation(.spring(duration: 0.3)) { drafts.append(PlayerDraft()) }
                 } label: {
                     Label("Spieler hinzufügen", systemImage: "plus.circle.fill")
                         .font(.subheadline.weight(.black))
@@ -243,7 +271,7 @@ struct PlayerSetupView: View {
                 stepperRow(
                     title: "Davon richtig erraten",
                     subtitle: "So viele Songs musst du knacken",
-                    value: $requiredMastered, range: 1...targetCards
+                    value: $requiredMastered, range: 1...masteredMax
                 )
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Wann zählt ein Song als erraten?")
@@ -262,9 +290,8 @@ struct PlayerSetupView: View {
         }
         .padding(18)
         .themedCard()
-        .onChange(of: targetCards) { _, newValue in
-            if requiredMastered > newValue { requiredMastered = newValue }
-        }
+        .onChange(of: targetCards) { _, _ in clampMastered() }
+        .onChange(of: stealEnabled) { _, _ in clampMastered() }
     }
 
     private func stepperRow(title: String, subtitle: String? = nil, value: Binding<Int>, range: ClosedRange<Int>, step: Int = 1) -> some View {
@@ -367,12 +394,14 @@ struct PlayerSetupView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(validNames.count < 2 || isLoading || (spotify != nil && selectedPlaylist == nil))
+        .disabled(validNames.count < 2 || isLoading || spotifyNeedsPlaylist)
     }
 
     private func start() async {
         guard let provider = music.provider else { return }
+        #if !APPSTORE
         if let spotify { spotify.selectedPlaylist = selectedPlaylist }
+        #endif
         isLoading = true
         defer { isLoading = false }
 

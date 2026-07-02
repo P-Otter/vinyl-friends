@@ -27,6 +27,8 @@ final class PreviewPlayer {
     func stop() {
         player.pause()
         player.replaceCurrentItem(with: nil)
+        // Audio-Session freigeben, damit andere Apps wieder Ton bekommen.
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     private func previewURL(artist: String, title: String, cacheKey: String) async throws -> URL {
@@ -38,7 +40,8 @@ final class PreviewPlayer {
             URLQueryItem(name: "entity", value: "song"),
             URLQueryItem(name: "limit", value: "8"),
         ]
-        let (data, _) = try await URLSession.shared.data(from: comps.url!)
+        guard let url = comps.url else { throw MusicProviderError.previewNotFound(title) }
+        let (data, _) = try await URLSession.shared.data(from: url)
         let response = try JSONDecoder().decode(SearchResponse.self, from: data)
         let candidates = response.results.filter { $0.previewUrl != nil }
 

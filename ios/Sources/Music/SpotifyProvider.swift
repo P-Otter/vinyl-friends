@@ -1,3 +1,4 @@
+#if !APPSTORE  // im App-Store-Build komplett ausgeschlossen
 // Spotify-Provider: echte Playlists über die Web API, Wiedergabe vorerst als
 // 30s-Hörprobe (PreviewPlayer) — damit komplett im Simulator testbar.
 // Volles Playback über das Spotify iOS SDK (App Remote) folgt auf dem Gerät.
@@ -57,3 +58,4 @@ final class SpotifyProvider: MusicProvider {
     func resume() { preview.resume() }
     func stop() { preview.stop() }
 }
+#endif

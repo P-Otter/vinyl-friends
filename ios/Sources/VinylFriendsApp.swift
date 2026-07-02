@@ -1,23 +1,25 @@
 import SwiftUI
 
 @main
-struct HitsterFriendsApp: App {
+struct VinylFriendsApp: App {
     @StateObject private var engine = GameEngine()
     @StateObject private var music = MusicSession()
     @StateObject private var themeStore = ThemeStore()
     @StateObject private var modeStore = AppModeStore()
 
-    // Launch-Argument "-demoGame" startet direkt ein vorbereitetes Spiel —
-    // für UI-Entwicklung und Screenshots. Theme dazu wählbar via "-themeId <id>"
-    // (Standard-UserDefaults-Mechanik), z. B.:
-    //   xcrun simctl launch <udid> com.shasha.HitsterFriends -demoGame -themeId neon
+    // Launch-Argumente ("-demoGame", "-localMode" …) sind reine Entwickler-/
+    // Screenshot-Hilfen und ausschließlich im DEBUG-Build aktiv — der ausgelieferte
+    // Release-/App-Store-Build enthält keine versteckten Schalter (Guideline 2.3).
+    #if DEBUG
     private var isDemoGame: Bool {
         ProcessInfo.processInfo.arguments.contains("-demoGame")
     }
+    #endif
 
     var body: some Scene {
         WindowGroup {
             Group {
+                #if DEBUG
                 if isDemoGame {
                     NavigationStack { GameView() }
                 } else if ProcessInfo.processInfo.arguments.contains("-demoSetup") {
@@ -29,6 +31,13 @@ struct HitsterFriendsApp: App {
                 } else {
                     HomeView()
                 }
+                #else
+                if modeStore.mode == nil {
+                    ModeSelectView()
+                } else {
+                    HomeView()
+                }
+                #endif
             }
             .environmentObject(engine)
             .environmentObject(music)
@@ -36,15 +45,18 @@ struct HitsterFriendsApp: App {
             .environmentObject(modeStore)
             .tint(themeStore.theme.accent)
             .preferredColorScheme(themeStore.theme.colorScheme)
+            #if DEBUG
             .onAppear {
                 let args = ProcessInfo.processInfo.arguments
                 if args.contains("-appStoreMode") { modeStore.mode = .appStore }
                 else if args.contains("-localMode") { modeStore.mode = .local }
                 if isDemoGame { seedDemoGame() }
             }
+            #endif
         }
     }
 
+    #if DEBUG
     private func seedDemoGame() {
         music.provider = DemoProvider()
         let colors = themeStore.theme.playerColors
@@ -92,4 +104,5 @@ struct HitsterFriendsApp: App {
             }
         }
     }
+    #endif
 }

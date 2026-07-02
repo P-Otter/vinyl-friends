@@ -1,3 +1,4 @@
+#if !APPSTORE  // im App-Store-Build komplett ausgeschlossen
 // Spotify-Login per PKCE (Authorization Code + Code Challenge) —
 // portiert aus src/lib/pkce.ts + spotify-auth.ts der Web-App.
 import AuthenticationServices
@@ -180,3 +181,4 @@ final class SpotifyAuth: NSObject, ASWebAuthenticationPresentationContextProvidi
         }
     }
 }
+#endif

@@ -8,13 +8,25 @@ enum AppMode: String, Codable, CaseIterable, Identifiable {
 
     var title: String { self == .local ? "Lokal" : "App Store" }
     var subtitle: String {
-        self == .local
+        #if APPSTORE
+        // Store-Build kennt nur einen Modus; kein Spotify-Bezug im Binary.
+        return "Pool aus Suche, Songliste oder fertigen Packs — gespielt als 30s-Vorschau."
+        #else
+        return self == .local
             ? "Privat mit deinem Kreis — eure echte Spotify-Playlist als Pool."
             : "Öffentliche Version — Pool per Suche/Liste, ohne Spotify-API."
+        #endif
     }
     var icon: String { self == .local ? "person.2.fill" : "globe" }
     /// Ob Spotify-API-Funktionen (Playlist lesen) verfügbar sind.
-    var spotifyEnabled: Bool { self == .local }
+    /// Im APPSTORE-Build IMMER aus (Spotify-Code ist gar nicht mit drin).
+    var spotifyEnabled: Bool {
+        #if APPSTORE
+        false
+        #else
+        self == .local
+        #endif
+    }
 }
 
 @MainActor
@@ -28,11 +40,27 @@ final class AppModeStore: ObservableObject {
 
     private let key = "appMode"
     /// Default „lokal", solange nichts gewählt (z. B. in Demo-/Dev-Starts).
-    var spotifyEnabled: Bool { (mode ?? .local).spotifyEnabled }
-
-    init() {
-        mode = UserDefaults.standard.string(forKey: key).flatMap(AppMode.init(rawValue:))
+    var spotifyEnabled: Bool {
+        #if APPSTORE
+        false
+        #else
+        (mode ?? .local).spotifyEnabled
+        #endif
     }
 
-    func reset() { mode = nil }
+    init() {
+        #if APPSTORE
+        mode = .appStore // im Store-Build gibt es keinen Lokal-Modus
+        #else
+        mode = UserDefaults.standard.string(forKey: key).flatMap(AppMode.init(rawValue:))
+        #endif
+    }
+
+    func reset() {
+        #if APPSTORE
+        mode = .appStore
+        #else
+        mode = nil
+        #endif
+    }
 }

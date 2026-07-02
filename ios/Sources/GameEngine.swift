@@ -173,11 +173,7 @@ final class GameEngine: ObservableObject {
 
         let nextIndex = currentTrackIndex + 1
         if nextIndex >= queue.count {
-            // Songs alle, niemand hat das Ziel erreicht.
-            winnerId = nil
-            finishReason = .exhausted
-            phase = .finished
-            lastResult = nil
+            finishByExhaustion()
             return
         }
         currentTrackIndex = nextIndex
@@ -187,13 +183,23 @@ final class GameEngine: ObservableObject {
         phase = .playing
     }
 
+    /// Queue leer: Wer das Kartenziel erreicht hat, wird gekrönt (auch wenn die
+    /// Meister-Quote knapp verfehlt wurde — sonst wäre der Sieg bei Bonus+Klauen
+    /// faktisch unerreichbar). Hat niemand das Ziel erreicht, endet es unentschieden.
+    private func finishByExhaustion() {
+        let needN: Int
+        if case .cards(let n) = settings.winCondition { needN = n } else { needN = .max }
+        let champ = Scoring.ranking(players).first { $0.cards >= needN }
+        winnerId = champ.flatMap { stats in players.first { $0.id == stats.playerId } }?.id
+        finishReason = winnerId != nil ? .won : .exhausted
+        phase = .finished
+        lastResult = nil
+    }
+
     func skipTrack() {
         let nextIndex = currentTrackIndex + 1
         if nextIndex >= queue.count {
-            winnerId = nil
-            finishReason = .exhausted
-            phase = .finished
-            lastResult = nil
+            finishByExhaustion()
             return
         }
         // Gleicher Spieler, neuer Song — Phase/Reste sicher zurücksetzen.
