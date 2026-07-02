@@ -1,15 +1,21 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth-context';
+import { useGameState } from './hooks/useGameState';
 import Login from './pages/Login';
 import Callback from './pages/Callback';
 import Setup from './pages/Setup';
+import PoolBuilder from './pages/PoolBuilder';
 import PlayerSetup from './pages/PlayerSetup';
 import Game from './pages/Game';
 import End from './pages/End';
 import type { ReactNode } from 'react';
 
 function RequireAuth({ children }: { children: ReactNode }) {
+  // Ohne-Spotify-Modus (Pool + 30s-Hörproben) braucht keinen Login —
+  // nur der Spotify-Pfad. Hooks müssen vor jedem Early-Return stehen.
+  const musicSource = useGameState((s) => s.settings.musicSource);
   const { status, error } = useAuth();
+  if (musicSource === 'preview') return <>{children}</>;
   if (status === 'loading') {
     return (
       <div className="flex h-full items-center justify-center text-slate-400">
@@ -22,7 +28,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
       <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
         <div className="max-w-md space-y-4">
           <p className="text-red-400">Fehler beim Laden: {error}</p>
-          <button className="btn-ghost" onClick={() => window.location.href = '/'}>
+          <button className="btn-ghost" onClick={() => window.location.href = import.meta.env.BASE_URL}>
             Zurück zum Login
           </button>
         </div>
@@ -41,6 +47,7 @@ function Shell() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/callback" element={<Callback />} />
+        <Route path="/pool" element={<PoolBuilder />} />
         <Route
           path="/setup"
           element={

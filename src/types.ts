@@ -1,10 +1,10 @@
 // Datenmodell — siehe docs/tech-stack.md. Client-only, kein Backend.
 
-export type TrackSource = 'friends' | `theme:${string}`;
+export type TrackSource = 'friends' | 'local' | `theme:${string}`;
 
 export type Track = {
-  id: string; // Spotify track ID
-  uri: string; // spotify:track:...
+  id: string; // Spotify track ID bzw. "itunes-…"/"pack-…" im Ohne-Spotify-Modus
+  uri: string; // spotify:track:... — '' im Ohne-Spotify-Modus
   name: string;
   artist: string;
   albumName: string;
@@ -17,6 +17,7 @@ export type Track = {
   addedByName?: string; // aufgelöster Anzeigename
   durationMs: number;
   explicit: boolean;
+  previewUrl?: string; // 30s-Hörprobe (iTunes) — nur im Ohne-Spotify-Modus gesetzt
 };
 
 export type Player = {
@@ -39,8 +40,13 @@ export type WinCondition =
   | { type: 'cards'; n: number }
   | { type: 'time'; minutes: number };
 
+// Woher die Musik kommt: Spotify (Web Playback SDK, Premium nötig) oder
+// 30s-iTunes-Hörproben (Ohne-Spotify-Modus — läuft ohne jedes Konto).
+export type MusicSource = 'spotify' | 'preview';
+
 export type GameSettings = {
   mode: GameMode;
+  musicSource: MusicSource;
   yearTolerance: number; // nur bei classic-year, default 2 (±)
   wager: boolean; // Confidence-Wager bei name-that-tune
   ghostTracks: boolean; // anonyme Tracks bei whose-fave

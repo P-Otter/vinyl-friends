@@ -1,13 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { makePlayer, useGameState } from '../hooks/useGameState';
+import { usePool } from '../hooks/usePool';
 import { buildQueue } from '../lib/queue-builder';
+import type { Track } from '../types';
 
 const DEFAULT_NAMES = ['Spieler 1', 'Spieler 2'];
+
+function shuffle<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
 
 export default function PlayerSetup() {
   const navigate = useNavigate();
   const { players, setPlayers, settings, startGame } = useGameState();
+  const { pool } = usePool();
+  const isPoolMode = settings.musicSource === 'preview';
   const [building, setBuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,13 +55,27 @@ export default function PlayerSetup() {
     setError(null);
     setBuilding(true);
     try {
-      const result = await buildQueue(settings);
-      if (result.queue.length === 0) {
-        throw new Error(
-          'Die Queue ist leer — Playlist zu kurz oder alle Songs herausgefiltert (Min-Länge/Explicit prüfen).',
-        );
+      let queue: Track[];
+      if (isPoolMode) {
+        // Ohne-Spotify-Modus: der selbst gebaute Pool IST die Queue.
+        const targetCards = settings.winCondition.type === 'cards' ? settings.winCondition.n : 10;
+        const minNeeded = Math.max(targetCards + 3, 8);
+        if (pool.length < minNeeded) {
+          throw new Error(
+            `Zu wenige Songs im Pool (${pool.length}). Mindestens ${minNeeded} nötig — geh zurück und füg mehr hinzu.`,
+          );
+        }
+        queue = shuffle(pool);
+      } else {
+        const result = await buildQueue(settings);
+        queue = result.queue;
+        if (queue.length === 0) {
+          throw new Error(
+            'Die Queue ist leer — Playlist zu kurz oder alle Songs herausgefiltert (Min-Länge/Explicit prüfen).',
+          );
+        }
       }
-      startGame(result.queue);
+      startGame(queue);
       navigate('/game');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -118,7 +145,11 @@ export default function PlayerSetup() {
       )}
 
       <div className="flex justify-between">
-        <button className="btn-ghost" onClick={() => navigate('/setup')} disabled={building}>
+        <button
+          className="btn-ghost"
+          onClick={() => navigate(isPoolMode ? '/pool' : '/setup')}
+          disabled={building}
+        >
           ← zurück
         </button>
         <button className="btn-primary" onClick={start} disabled={!validNames || building}>

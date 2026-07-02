@@ -7,3 +7,8 @@ dist
 *.log
 .vite
 *.tsbuildinfo
+
+# iOS: Build-Artefakte + generiertes Xcode-Projekt (aus project.yml via xcodegen)
+ios/build/
+ios/build-appstore/
+ios/*.xcodeproj/

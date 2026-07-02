@@ -1,0 +1,46 @@
+# Baut die Web-App und deployt sie auf GitHub Pages (bei jedem Push auf main).
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      # Client-ID ist öffentlich (PKCE, kein Secret). Die Redirect-URI muss exakt so
+      # im Spotify Developer Dashboard hinterlegt sein (nur für den Spotify-Modus nötig
+      # — der Ohne-Spotify-Modus läuft ganz ohne).
+      VITE_SPOTIFY_CLIENT_ID: 061815aad912456a892d0f621c67aca8
+      VITE_SPOTIFY_REDIRECT_URI: https://p-otter.github.io/vinyl-friends/callback
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -b && npx vite build --mode ghpages
+      # SPA-Fallback: GitHub Pages kennt die Client-Routen nicht — 404.html
+      # als Kopie der index.html lässt den Router beim Reload übernehmen.
+      - run: cp dist/index.html dist/404.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

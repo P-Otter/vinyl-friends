@@ -24,6 +24,7 @@ const PLAYER_COLORS = [
 export function defaultSettings(): GameSettings {
   return {
     mode: 'classic-relative',
+    musicSource: 'spotify',
     yearTolerance: 2,
     wager: false,
     ghostTracks: false,

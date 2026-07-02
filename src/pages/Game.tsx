@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameState } from '../hooks/useGameState';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
+import { usePreviewPlayer } from '../hooks/usePreviewPlayer';
 import { randomOffsetMs } from '../lib/queue-builder';
 import { sortByYear } from '../lib/scoring';
 import Timeline from '../components/Timeline';
@@ -35,7 +36,12 @@ export default function Game() {
     localStorage.setItem('hf:smoothProgress', smoothProgress ? '1' : '0');
   }, [smoothProgress]);
 
-  const player = useSpotifyPlayer(true, smoothProgress);
+  // Beide Hooks IMMER aufrufen (Hook-Regel) — aktiv ist nur eine Quelle:
+  // Spotify Web Playback SDK oder 30s-iTunes-Hörproben (Ohne-Spotify-Modus).
+  const isPreviewMode = settings.musicSource === 'preview';
+  const spotify = useSpotifyPlayer(!isPreviewMode, smoothProgress);
+  const preview = usePreviewPlayer();
+  const player = isPreviewMode ? preview : spotify;
 
   const track = queue[currentTrackIndex];
   const activePlayer = players[currentPlayerIdx];
@@ -49,11 +55,14 @@ export default function Game() {
   const [playError, setPlayError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Neue Runde → lokalen Rundenzustand zurücksetzen.
+  // Neue Runde → lokalen Rundenzustand zurücksetzen + Hörprobe stoppen
+  // (sonst liefe der alte Song nach einem Skip weiter).
   useEffect(() => {
     setStarted(false);
     setSelectedGap(null);
     setPlayError(null);
+    preview.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrackIndex]);
 
   // Spielende → Endscreen.
@@ -68,18 +77,26 @@ export default function Game() {
     setBusy(true);
     setPlayError(null);
     try {
-      const offset = settings.randomOffset ? randomOffsetMs(track.durationMs) : 0;
-      await player.play(track.uri, offset);
+      if (isPreviewMode) {
+        await preview.play(track);
+      } else {
+        const offset = settings.randomOffset ? randomOffsetMs(track.durationMs) : 0;
+        await spotify.play(track.uri, offset);
+      }
       setStarted(true);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      // Geräte-/Verbindungsfehler (404 oder fehlgeschlagener Reconnect) ≠ Song-Problem:
-      // dann hilft Neuladen, nicht Überspringen.
-      const deviceLost = /\b404\b/.test(msg) || /Reconnect|ready|Player/i.test(msg);
-      const hint = deviceLost
-        ? ' — Player-Gerät verloren. Seite neu laden (F5) und neu mit Spotify verbinden.'
-        : ' — Song evtl. nicht verfügbar. Du kannst überspringen, ohne den Zug zu verlieren.';
-      setPlayError(msg + hint);
+      if (isPreviewMode) {
+        setPlayError(msg + ' — Du kannst überspringen, ohne den Zug zu verlieren.');
+      } else {
+        // Geräte-/Verbindungsfehler (404 oder fehlgeschlagener Reconnect) ≠ Song-Problem:
+        // dann hilft Neuladen, nicht Überspringen.
+        const deviceLost = /\b404\b/.test(msg) || /Reconnect|ready|Player/i.test(msg);
+        const hint = deviceLost
+          ? ' — Player-Gerät verloren. Seite neu laden (F5) und neu mit Spotify verbinden.'
+          : ' — Song evtl. nicht verfügbar. Du kannst überspringen, ohne den Zug zu verlieren.';
+        setPlayError(msg + hint);
+      }
     } finally {
       setBusy(false);
     }
@@ -119,7 +136,7 @@ export default function Game() {
     return <p className="text-slate-400">Lade Spiel…</p>;
   }
 
-  const playerReady = player.status === 'ready';
+  const playerReady = isPreviewMode || player.status === 'ready';
 
   return (
     <div className="space-y-6">
@@ -153,16 +170,18 @@ export default function Game() {
           disabled={!playerReady || busy}
         />
         {playError && <p className="mt-3 text-sm text-red-300">{playError}</p>}
-        <label className="mt-3 flex items-center gap-2 text-xs text-slate-400">
-          <input
-            type="checkbox"
-            checked={smoothProgress}
-            onChange={(e) => setSmoothProgress(e.target.checked)}
-            className="accent-accent"
-          />
-          Flüssige Fortschrittsanzeige
-          <span className="text-slate-500">— bei Rucklern ausschalten</span>
-        </label>
+        {!isPreviewMode && (
+          <label className="mt-3 flex items-center gap-2 text-xs text-slate-400">
+            <input
+              type="checkbox"
+              checked={smoothProgress}
+              onChange={(e) => setSmoothProgress(e.target.checked)}
+              className="accent-accent"
+            />
+            Flüssige Fortschrittsanzeige
+            <span className="text-slate-500">— bei Rucklern ausschalten</span>
+          </label>
+        )}
       </section>
 
       <section className="panel space-y-4">

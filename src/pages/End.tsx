@@ -5,12 +5,14 @@ import EndScreen from '../components/EndScreen';
 
 export default function End() {
   const navigate = useNavigate();
-  const { players, resetGame, phase } = useGameState();
+  const { players, resetGame, phase, settings } = useGameState();
+  // Im Ohne-Spotify-Modus führt „Setup" zurück zum Pool, nicht zum Spotify-Setup.
+  const setupPath = settings.musicSource === 'preview' ? '/pool' : '/setup';
 
   // Direkt-Aufruf ohne gespieltes Spiel → zurück zum Setup.
   useEffect(() => {
-    if (phase === 'setup') navigate('/setup', { replace: true });
-  }, [phase, navigate]);
+    if (phase === 'setup') navigate(setupPath, { replace: true });
+  }, [phase, navigate, setupPath]);
 
   return (
     <EndScreen
@@ -21,7 +23,7 @@ export default function End() {
       }}
       onBackToSetup={() => {
         resetGame();
-        navigate('/setup');
+        navigate(setupPath);
       }}
     />
   );

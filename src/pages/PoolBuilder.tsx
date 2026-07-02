@@ -1,0 +1,271 @@
+// Eigenen Song-Pool bauen — Ohne-Spotify-Modus (Port des iOS-PoolBuilders):
+// fertige Packs antippen, Songs suchen oder eine Liste einfügen.
+// Gespielt wird mit 30s-iTunes-Hörproben, ganz ohne Konto.
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { searchSongs } from '../lib/itunes';
+import { usePool } from '../hooks/usePool';
+import { useGameState } from '../hooks/useGameState';
+import type { Track } from '../types';
+import packsData from '../data/song-packs.json';
+
+type PackSong = { title: string; artist: string; year: number };
+type Pack = { id: string; name: string; emoji: string; songs: PackSong[] };
+
+const PACKS = (packsData as { packs: Pack[] }).packs;
+const MIN_SONGS = 8;
+
+function packTrack(pack: Pack, song: PackSong): Track {
+  return {
+    id: `pack-${pack.id}-${song.artist}-${song.title}`,
+    uri: '',
+    name: song.title,
+    artist: song.artist,
+    albumName: '',
+    albumArt: '',
+    releaseYear: song.year,
+    releaseDateRaw: String(song.year),
+    releaseDatePrecision: 'year',
+    source: 'local',
+    durationMs: 30_000,
+    explicit: false,
+  };
+}
+
+export default function PoolBuilder() {
+  const navigate = useNavigate();
+  const { pool, add, remove, clear } = usePool();
+  const { setSettings } = useGameState();
+
+  const [tab, setTab] = useState<'search' | 'paste'>('search');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Track[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [targetCards, setTargetCards] = useState(5);
+
+  // Suche mit 400ms-Debounce (wie iOS).
+  const searchTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (searchTimer.current) window.clearTimeout(searchTimer.current);
+    const q = query.trim();
+    if (q.length < 2) {
+      setResults([]);
+      return;
+    }
+    searchTimer.current = window.setTimeout(() => {
+      setSearching(true);
+      searchSongs(q)
+        .then(setResults)
+        .catch(() => setError('Suche fehlgeschlagen — kein Netz?'))
+        .finally(() => setSearching(false));
+    }, 400);
+    return () => {
+      if (searchTimer.current) window.clearTimeout(searchTimer.current);
+    };
+  }, [query]);
+
+  const poolIds = new Set(pool.map((t) => t.id));
+
+  const addPack = (pack: Pack) => {
+    const added = add(pack.songs.map((s) => packTrack(pack, s)));
+    setInfo(`${added} Songs aus ${pack.name} hinzugefügt`);
+  };
+
+  const toggleTrack = (track: Track) => {
+    if (poolIds.has(track.id)) remove(track.id);
+    else add([track]);
+  };
+
+  const runImport = async () => {
+    const lines = pasteText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (lines.length === 0) return;
+    setImporting(true);
+    setInfo(null);
+    setError(null);
+    let added = 0;
+    let missed = 0;
+    for (const line of lines) {
+      try {
+        const hits = await searchSongs(line, 1);
+        if (hits[0]) added += add([hits[0]]);
+        else missed += 1;
+      } catch {
+        missed += 1;
+      }
+    }
+    setInfo(`${added} hinzugefügt${missed > 0 ? `, ${missed} nicht gefunden` : ''}`);
+    setImporting(false);
+  };
+
+  const start = () => {
+    setSettings({
+      musicSource: 'preview',
+      winCondition: { type: 'cards', n: targetCards },
+      snippetMode: { enabled: false, lengthSec: 30 },
+      randomOffset: false,
+    });
+    navigate('/players');
+  };
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold">Eigenen Pool bauen</h1>
+      <p className="text-sm text-slate-400">
+        Ohne Spotify, ohne Konto — gespielt wird mit 30-Sekunden-Hörproben.
+      </p>
+
+      <section className="panel space-y-3">
+        <label className="field-label mb-0">Fertige Packs — Tipp: hinzufügen</label>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {PACKS.map((pack) => (
+            <button
+              key={pack.id}
+              onClick={() => addPack(pack)}
+              className="flex w-24 shrink-0 flex-col items-center gap-1 rounded-xl bg-panel2 px-2 py-3 text-center hover:bg-panel2/70"
+            >
+              <span className="text-2xl">{pack.emoji}</span>
+              <span className="text-[11px] font-semibold leading-tight">{pack.name}</span>
+              <span className="text-[10px] text-accent">{pack.songs.length}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {info && <p className="text-sm text-emerald-300">✓ {info}</p>}
+      {error && <p className="text-sm text-red-300">{error}</p>}
+
+      <section className="panel space-y-4">
+        <div className="flex gap-2">
+          <button
+            className={tab === 'search' ? 'btn-primary flex-1' : 'btn-ghost flex-1'}
+            onClick={() => setTab('search')}
+          >
+            Suchen
+          </button>
+          <button
+            className={tab === 'paste' ? 'btn-primary flex-1' : 'btn-ghost flex-1'}
+            onClick={() => setTab('paste')}
+          >
+            Liste einfügen
+          </button>
+        </div>
+
+        {tab === 'search' ? (
+          <div className="space-y-2">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Song oder Künstler …"
+              className="w-full rounded-lg bg-panel2 px-3 py-2"
+            />
+            {searching && <p className="text-xs text-slate-500">Suche…</p>}
+            {results.map((track) => {
+              const added = poolIds.has(track.id);
+              return (
+                <button
+                  key={track.id}
+                  onClick={() => toggleTrack(track)}
+                  className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-panel2/60"
+                >
+                  <span className="w-12 shrink-0 font-mono text-sm font-bold text-accent">
+                    {track.releaseYear}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">{track.name}</span>
+                    <span className="block truncate text-xs text-slate-400">{track.artist}</span>
+                  </span>
+                  <span className={added ? 'text-emerald-400' : 'text-accent'}>
+                    {added ? '✓' : '+'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-400">
+              Pro Zeile ein Song („Künstler – Titel“) — z. B. aus einer exportierten Playlist.
+            </p>
+            <textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              rows={6}
+              className="w-full rounded-lg bg-panel2 px-3 py-2 text-sm"
+            />
+            <button
+              className="btn-primary w-full"
+              onClick={runImport}
+              disabled={importing || pasteText.trim().length === 0}
+            >
+              {importing ? 'Importiere…' : 'Importieren'}
+            </button>
+          </div>
+        )}
+      </section>
+
+      <section className="panel space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="field-label mb-0">Dein Pool · {pool.length}</label>
+          {pool.length > 0 && (
+            <button className="text-xs text-red-300 underline" onClick={clear}>
+              Pool leeren
+            </button>
+          )}
+        </div>
+        {pool.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            Noch leer — tippe ein Pack an, such Songs oder füg eine Liste ein.
+          </p>
+        ) : (
+          <div className="max-h-64 space-y-1 overflow-y-auto">
+            {[...pool].reverse().map((track) => (
+              <div key={track.id} className="flex items-center gap-3 py-1">
+                <span className="w-12 shrink-0 font-mono text-xs font-bold text-accent">
+                  {track.releaseYear}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm">{track.name}</span>
+                  <span className="block truncate text-xs text-slate-500">{track.artist}</span>
+                </span>
+                <button className="px-2 text-slate-500 hover:text-red-300" onClick={() => remove(track.id)}>
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel flex items-center justify-between">
+        <label className="field-label mb-0">Karten zum Gewinnen</label>
+        <div className="flex items-center gap-3">
+          <button className="btn-ghost px-3" onClick={() => setTargetCards(Math.max(3, targetCards - 1))}>
+            −
+          </button>
+          <span className="w-6 text-center font-mono text-lg font-bold">{targetCards}</span>
+          <button className="btn-ghost px-3" onClick={() => setTargetCards(Math.min(15, targetCards + 1))}>
+            +
+          </button>
+        </div>
+      </section>
+
+      <div className="flex items-center justify-between">
+        <button className="btn-ghost" onClick={() => navigate('/')}>
+          ← zurück
+        </button>
+        <button className="btn-primary" onClick={start} disabled={pool.length < MIN_SONGS}>
+          {pool.length < MIN_SONGS
+            ? `Mind. ${MIN_SONGS} Songs (noch ${MIN_SONGS - pool.length})`
+            : `Weiter — ${pool.length} Songs`}
+        </button>
+      </div>
+    </div>
+  );
+}
