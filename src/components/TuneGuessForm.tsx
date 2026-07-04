@@ -15,7 +15,6 @@ export default function TuneGuessForm({ bonus, wagerEnabled, onSubmit }: Props) 
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
   const [wagered, setWagered] = useState(false);
-  const [skipped, setSkipped] = useState(false);
 
   if (bonus) {
     return (
@@ -35,14 +34,6 @@ export default function TuneGuessForm({ bonus, wagerEnabled, onSubmit }: Props) 
       </div>
     );
   }
-  if (skipped) {
-    return (
-      <p className="mt-4 text-xs" style={{ color: t.textMuted }}>
-        Bonus übersprungen.
-      </p>
-    );
-  }
-
   const hasAnyGuess = title.trim().length > 0 || artist.trim().length > 0;
   const fieldStyle = {
     background: t.background,
@@ -78,7 +69,7 @@ export default function TuneGuessForm({ bonus, wagerEnabled, onSubmit }: Props) 
       <div className="flex gap-2">
         <button
           className="btn-ghost flex-1 py-2 text-sm"
-          onClick={() => setSkipped(true)}
+          onClick={() => onSubmit('', '', false)}
         >
           Weiß nicht
         </button>

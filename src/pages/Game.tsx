@@ -59,6 +59,14 @@ export default function Game() {
     () => (activePlayer ? sortByYear(activePlayer.cards) : []),
     [activePlayer],
   );
+  // "Artist & Titel raten": die gerade platzierte Karte steht schon in der Timeline
+  // (Farbe/Jahr korrekt), aber der Songname muss versteckt bleiben, bis der
+  // Bonus-Tipp abgegeben ist — sonst verrät die Timeline die Lösung hinter dem Overlay.
+  const tuneGuessPending =
+    phase === 'reveal' &&
+    settings.mode === 'name-that-tune' &&
+    lastResult?.correct === true &&
+    !lastResult.bonus;
 
   const [started, setStarted] = useState(false);
   const [selectedGap, setSelectedGap] = useState<number | null>(null);
@@ -232,6 +240,7 @@ export default function Game() {
           selectedGap={selectedGap}
           onSelectGap={setSelectedGap}
           disabled={!started}
+          maskedCardId={tuneGuessPending ? lastResult.track.id : undefined}
         />
         <button
           className="btn-primary w-full"

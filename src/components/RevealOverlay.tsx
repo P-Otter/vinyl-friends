@@ -36,6 +36,9 @@ export default function RevealOverlay({
   const { track, correct } = result;
   const t = useTheme();
   const stampColor = correct ? t.good : t.bad;
+  // "Artist & Titel raten": Titel/Artist erst zeigen, NACHDEM geraten wurde —
+  // sonst steht die Lösung über dem eigenen Rateformular.
+  const tuneGuessPending = mode === 'name-that-tune' && correct && !result.bonus;
 
   return (
     // overflow-y-auto + min-h-full: auf kleinen Viewports (iPhone quer) wird
@@ -68,8 +71,10 @@ export default function RevealOverlay({
                 </span>
               )}
           </div>
-          <div className="text-lg font-bold">{track.name}</div>
-          <div style={{ color: t.textMuted }}>{track.artist}</div>
+          <div className="text-lg font-bold">{tuneGuessPending ? '🎵 ???' : track.name}</div>
+          <div style={{ color: t.textMuted }}>
+            {tuneGuessPending ? 'Erst raten, dann auflösen ↓' : track.artist}
+          </div>
 
           <div
             className="mt-6 rounded-xl px-4 py-3 font-bold"

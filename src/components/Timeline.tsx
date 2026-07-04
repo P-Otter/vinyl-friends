@@ -8,13 +8,14 @@ type Props = {
   selectedGap: number | null; // 0..cards.length
   onSelectGap: (gap: number) => void;
   disabled?: boolean;
+  maskedCardId?: string; // "Artist & Titel raten": diese Karte zeigt noch keinen Songnamen
 };
 
 /**
  * Zeigt die Karten des aktiven Spielers chronologisch + klickbare Lücken dazwischen.
  * Gap i bedeutet: Karte landet VOR cards[i] (Gap 0 = ganz links, cards.length = ganz rechts).
  */
-function Timeline({ cards, selectedGap, onSelectGap, disabled }: Props) {
+function Timeline({ cards, selectedGap, onSelectGap, disabled, maskedCardId }: Props) {
   const t = useTheme();
 
   const Gap = ({ index }: { index: number }) => {
@@ -56,7 +57,7 @@ function Timeline({ cards, selectedGap, onSelectGap, disabled }: Props) {
       <Gap index={0} />
       {cards.map((card, i) => (
         <div key={card.id} className="flex items-center">
-          <TrackCard track={card} />
+          <TrackCard track={card} masked={card.id === maskedCardId} />
           <Gap index={i + 1} />
         </div>
       ))}

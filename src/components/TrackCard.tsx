@@ -5,12 +5,13 @@ import { useTheme } from '../hooks/useTheme';
 type Props = {
   track: Track;
   accent?: string;
+  masked?: boolean; // "Artist & Titel raten": Songname verstecken, solange der Bonus-Tipp noch aussteht
 };
 
 // Textbasierte Karte (Jahr + Farbbalken + Songname) statt Cover-Thumbnail —
 // Port von CardFace/"classic" (iOS TimelineCards.swift). Bewusst OHNE Cover:
 // das Spielprinzip ist "hören, nicht sehen" (Cover könnte die Ära verraten).
-function TrackCard({ track, accent }: Props) {
+function TrackCard({ track, accent, masked }: Props) {
   const t = useTheme();
   const barColor = accent ?? t.highlight;
   return (
@@ -28,7 +29,7 @@ function TrackCard({ track, accent }: Props) {
       </div>
       <div className="h-[3px] w-8 rounded-full" style={{ background: barColor }} />
       <div className="line-clamp-2 text-[10px] font-bold leading-tight" style={{ color: t.textMuted }}>
-        {track.name}
+        {masked ? '🎵 ???' : track.name}
       </div>
     </div>
   );
