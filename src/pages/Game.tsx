@@ -26,6 +26,8 @@ export default function Game() {
     placeCard,
     nextPlayer,
     skipTrack,
+    awardFaveGuess,
+    submitTuneGuess,
   } = useGameState();
 
   // Flüssige Fortschrittsanzeige (500-ms-Ticker). Auf langsamen Geräten abschaltbar,
@@ -249,7 +251,15 @@ export default function Game() {
       </section>
 
       {phase === 'reveal' && lastResult && (
-        <RevealOverlay result={lastResult} onNext={nextPlayer} />
+        <RevealOverlay
+          result={lastResult}
+          onNext={nextPlayer}
+          mode={settings.mode}
+          players={players}
+          wagerEnabled={settings.wager}
+          onAwardFaveGuess={awardFaveGuess}
+          onSubmitTuneGuess={submitTuneGuess}
+        />
       )}
     </div>
   );

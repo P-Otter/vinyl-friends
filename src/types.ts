@@ -28,6 +28,7 @@ export type Player = {
   // Stats fürs Endscreen
   attempts: number;
   hits: number;
+  bonusPoints: number; // "Wessen Liebling?"-Treffer + "Artist & Titel raten"-Treffer
 };
 
 export type GameMode =
@@ -64,12 +65,23 @@ export type GameSettings = {
 
 export type GamePhase = 'setup' | 'playing' | 'reveal' | 'finished';
 
+// "Artist & Titel raten": Ergebnis des Bonus-Ratens, fürs Reveal-Overlay.
+export type BonusGuessResult = {
+  titleGuess: string;
+  artistGuess: string;
+  titleCorrect: boolean;
+  artistCorrect: boolean;
+  mastered: boolean; // beide korrekt
+  wagered: boolean; // Confidence-Wager gesetzt?
+};
+
 // Ergebnis einer Platzierung, fürs Reveal-Overlay festgehalten.
 export type PlacementResult = {
   track: Track;
   playerId: string;
   insertIndex: number; // gewählte Position in der Timeline (0..len)
   correct: boolean;
+  bonus?: BonusGuessResult; // nur im Modus "name-that-tune"
 };
 
 export type GameState = {

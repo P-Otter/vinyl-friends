@@ -42,6 +42,33 @@ export function getMe(): Promise<SpotifyUser> {
   return api<SpotifyUser>('/me');
 }
 
+// ---- Öffentliche Nutzerprofile (für "Wessen Liebling?" — added_by → Anzeigename) ----
+const userNameCache = new Map<string, string>();
+
+/** Anzeigename zu einer Spotify-User-ID — gecacht, da dieselbe Person oft mehrfach
+ *  in einer Playlist auftaucht. Fällt auf die ID zurück, wenn kein display_name gesetzt ist. */
+export async function getUserDisplayName(userId: string): Promise<string> {
+  const cached = userNameCache.get(userId);
+  if (cached) return cached;
+  try {
+    const user = await api<{ display_name: string | null }>(`/users/${encodeURIComponent(userId)}`);
+    const name = user.display_name?.trim() || userId;
+    userNameCache.set(userId, name);
+    return name;
+  } catch {
+    // Profil evtl. privat/gelöscht — ID als Fallback merken, damit wir es nicht erneut versuchen.
+    userNameCache.set(userId, userId);
+    return userId;
+  }
+}
+
+/** Löst alle eindeutigen added_by-IDs in einem Rutsch auf (parallel, gecacht). */
+export async function resolveDisplayNames(userIds: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(userIds)];
+  const names = await Promise.all(unique.map(getUserDisplayName));
+  return new Map(unique.map((id, i) => [id, names[i]]));
+}
+
 // ---- Playlists ----
 export type SpotifyPlaylist = {
   id: string;

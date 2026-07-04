@@ -1,6 +1,6 @@
 // Scoring für den Klassik-Modus (relative Ordnung).
 // Siehe docs/game-design.md → Grundregeln + Edge-Case „Zwei Karten aus dem gleichen Jahr".
-import type { Track } from '../types';
+import type { Player, Track } from '../types';
 
 /** Karten chronologisch nach Jahr sortieren (stabil). */
 export function sortByYear(cards: Track[]): Track[] {
@@ -43,17 +43,18 @@ export type PlayerStats = {
   name: string;
   cards: number;
   accuracy: number; // 0..1
+  bonusPoints: number; // "Wessen Liebling?" / "Artist & Titel raten"
 };
 
-export function ranking(
-  players: { id: string; name: string; cards: Track[]; attempts: number; hits: number }[],
-): PlayerStats[] {
+export function ranking(players: Player[]): PlayerStats[] {
   return players
     .map((p) => ({
       playerId: p.id,
       name: p.name,
       cards: p.cards.length,
       accuracy: p.attempts > 0 ? p.hits / p.attempts : 0,
+      bonusPoints: p.bonusPoints ?? 0,
     }))
-    .sort((a, b) => b.cards - a.cards || b.accuracy - a.accuracy);
+    // Kartenzahl bleibt die Sieg-Metrik; Bonuspunkte zählen nur als Tiebreaker.
+    .sort((a, b) => b.cards - a.cards || b.accuracy - a.accuracy || b.bonusPoints - a.bonusPoints);
 }

@@ -21,7 +21,7 @@ function shuffle<T>(arr: T[]): T[] {
 
 export default function PlayerSetup() {
   const navigate = useNavigate();
-  const { players, setPlayers, settings, startGame } = useGameState();
+  const { players, setPlayers, settings, setSettings, startGame } = useGameState();
   const { pool } = usePool();
   const isPoolMode = settings.musicSource === 'preview';
   const [building, setBuilding] = useState(false);
@@ -33,6 +33,16 @@ export default function PlayerSetup() {
       setPlayers(DEFAULT_NAMES.map((n, i) => makePlayer(n, i)));
     }
   }, [players.length, setPlayers]);
+
+  // "Wessen Liebling?" braucht added_by-Daten aus einer echten Spotify-Playlist —
+  // im Pool-Modus (evtl. aus einer früheren Spotify-Session in settings hängen
+  // geblieben) gibt's die nicht, also auf Klassisch zurückfallen.
+  useEffect(() => {
+    if (isPoolMode && settings.mode === 'whose-fave') {
+      setSettings({ mode: 'classic-relative' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPoolMode]);
 
   const list = players;
 
@@ -149,6 +159,54 @@ export default function PlayerSetup() {
         <p className="text-xs" style={{ color: t.textMuted }}>
           2–8 Spieler · Reihenfolge mit ↑ ↓ sortieren
         </p>
+      </section>
+
+      <section className="panel space-y-3">
+        <label className="field-label mb-0">Modus</label>
+        {(
+          [
+            { id: 'classic-relative' as const, label: 'Klassisch', hint: 'Nur Jahr einsortieren.' },
+            {
+              id: 'name-that-tune' as const,
+              label: 'Artist & Titel raten',
+              hint: 'Nach richtiger Platzierung Titel & Künstler erraten — optional mit Risiko-Wette.',
+            },
+          ]
+        ).map((m) => {
+          const checked = settings.mode === m.id || (m.id === 'classic-relative' && settings.mode === 'classic-year');
+          return (
+            <label key={m.id} className="flex cursor-pointer items-start gap-3">
+              <input
+                type="radio"
+                name="pool-mode"
+                className="mt-1"
+                checked={checked}
+                onChange={() => setSettings({ mode: m.id })}
+              />
+              <span>
+                <span className="block font-semibold">{m.label}</span>
+                <span className="block text-xs" style={{ color: t.textMuted }}>
+                  {m.hint}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+        {settings.mode === 'name-that-tune' && (
+          <label className="flex items-center justify-between rounded-lg px-3 py-2 text-sm" style={{ background: t.background }}>
+            <span>
+              Risiko-Wette erlauben
+              <span className="block text-xs" style={{ color: t.textMuted }}>
+                Beide richtig = doppelter Bonus, falsch = Karte weg.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={settings.wager}
+              onChange={(e) => setSettings({ wager: e.target.checked })}
+            />
+          </label>
+        )}
       </section>
 
       {error && (

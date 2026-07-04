@@ -7,10 +7,22 @@ import ThemeChips from '../components/ThemeChips';
 import MixSlider from '../components/MixSlider';
 import type { GameMode } from '../types';
 
-const MODES: { id: GameMode; label: string; available: boolean }[] = [
-  { id: 'classic-relative', label: 'Klassisch — Reihenfolge (ohne Jahre)', available: true },
-  { id: 'whose-fave', label: 'Wessen Liebling? / Wer errät ihn zuerst?', available: false },
-  { id: 'name-that-tune', label: 'Artist & Titel raten', available: false },
+const MODES: { id: GameMode; label: string; hint: string }[] = [
+  {
+    id: 'classic-relative',
+    label: 'Klassisch — Reihenfolge (ohne Jahre)',
+    hint: 'Karte chronologisch einsortieren, Jahr erst beim Aufdecken.',
+  },
+  {
+    id: 'whose-fave',
+    label: 'Wessen Liebling?',
+    hint: 'Zusätzlich raten, wer den Song zur Playlist hinzugefügt hat — Bonuspunkt für die Gruppe. Braucht eine Friends-Playlist (nicht bei reinem Theme-Mix).',
+  },
+  {
+    id: 'name-that-tune',
+    label: 'Artist & Titel raten',
+    hint: 'Nach richtiger Platzierung Titel & Künstler erraten — optional mit Risiko-Wette.',
+  },
 ];
 
 export default function Setup() {
@@ -77,28 +89,41 @@ export default function Setup() {
 
       <section className="panel space-y-3">
         <label className="field-label">Modus</label>
-        {MODES.map((m) => (
-          <label
-            key={m.id}
-            className={
-              'flex items-center gap-3 rounded-lg px-2 py-1 ' +
-              (m.available ? 'cursor-pointer' : 'cursor-not-allowed opacity-50')
-            }
-          >
+        {MODES.map((m) => {
+          const checked = settings.mode === m.id || (m.id === 'classic-relative' && settings.mode === 'classic-year');
+          return (
+            <label key={m.id} className="flex cursor-pointer items-start gap-3 rounded-lg px-2 py-1">
+              <input
+                type="radio"
+                name="mode"
+                className="accent-accent mt-1"
+                checked={checked}
+                onChange={() => setSettings({ mode: m.id })}
+              />
+              <span>
+                <span className="block font-semibold">{m.label}</span>
+                <span className="block text-xs text-slate-400">{m.hint}</span>
+              </span>
+            </label>
+          );
+        })}
+
+        {settings.mode === 'name-that-tune' && (
+          <label className="flex items-center justify-between rounded-lg bg-panel2 px-3 py-2 text-sm">
+            <span>
+              Risiko-Wette erlauben
+              <span className="block text-xs text-slate-400">
+                Vor der Auflösung wetten: beide richtig = doppelter Bonus, falsch = Karte weg.
+              </span>
+            </span>
             <input
-              type="radio"
-              name="mode"
+              type="checkbox"
               className="accent-accent"
-              checked={settings.mode === m.id || (m.id === 'classic-relative' && settings.mode === 'classic-year')}
-              disabled={!m.available}
-              onChange={() => m.available && setSettings({ mode: m.id })}
+              checked={settings.wager}
+              onChange={(e) => setSettings({ wager: e.target.checked })}
             />
-            <span>{m.label}</span>
-            {!m.available && (
-              <span className="rounded bg-panel2 px-2 py-0.5 text-xs text-slate-400">V1</span>
-            )}
           </label>
-        ))}
+        )}
       </section>
 
       <section className="panel space-y-3">

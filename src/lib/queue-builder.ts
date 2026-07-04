@@ -1,6 +1,6 @@
 // Track-Queue-Generation — Dedup, Filter, gewichtetes Mischen, Shuffle.
 // Siehe docs/tech-stack.md → Track-Queue-Generation.
-import { getPlaylistTracks } from './spotify-api';
+import { getPlaylistTracks, resolveDisplayNames } from './spotify-api';
 import type { GameSettings, Theme, Track } from '../types';
 import themesData from '../data/themes.json';
 
@@ -112,7 +112,19 @@ export async function buildQueue(settings: GameSettings): Promise<QueueBuildResu
   const themePools = themeRaw.map((t) => applyFilters(t.tracks, settings));
 
   const mixed = weightedMix(friends, themePools, settings.friendsRatio);
-  const queue = shuffle(dedupe(mixed));
+  let queue = shuffle(dedupe(mixed));
+
+  // "Wessen Liebling?": Anzeigenamen zu den added_by-IDs auflösen (sonst sähe
+  // die Reveal-Karte nur eine rohe Spotify-User-ID statt eines echten Namens).
+  if (settings.mode === 'whose-fave') {
+    const ids = queue.map((t) => t.addedById).filter((id): id is string => Boolean(id));
+    if (ids.length > 0) {
+      const names = await resolveDisplayNames(ids);
+      queue = queue.map((t) =>
+        t.addedById ? { ...t, addedByName: names.get(t.addedById) } : t,
+      );
+    }
+  }
 
   const themeCounts: Record<string, number> = {};
   for (const t of queue) {

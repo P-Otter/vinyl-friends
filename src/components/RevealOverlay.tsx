@@ -1,11 +1,18 @@
-import type { PlacementResult, Track } from '../types';
+import type { GameMode, PlacementResult, Player, Track } from '../types';
 import { themeById } from '../lib/queue-builder';
 import { useTheme } from '../hooks/useTheme';
 import Confetti from './theme/Confetti';
+import FaveGuessRow from './FaveGuessRow';
+import TuneGuessForm from './TuneGuessForm';
 
 type Props = {
   result: PlacementResult;
   onNext: () => void;
+  mode: GameMode;
+  players: Player[];
+  wagerEnabled: boolean;
+  onAwardFaveGuess: (playerId: string) => void;
+  onSubmitTuneGuess: (titleGuess: string, artistGuess: string, wagered: boolean) => void;
 };
 
 function sourceLabel(track: Track): string {
@@ -16,7 +23,15 @@ function sourceLabel(track: Track): string {
   return theme ? `aus Theme: ${theme.name}` : 'aus Theme-Pack';
 }
 
-export default function RevealOverlay({ result, onNext }: Props) {
+export default function RevealOverlay({
+  result,
+  onNext,
+  mode,
+  players,
+  wagerEnabled,
+  onAwardFaveGuess,
+  onSubmitTuneGuess,
+}: Props) {
   const { track, correct } = result;
   const t = useTheme();
   const stampColor = correct ? t.good : t.bad;
@@ -68,6 +83,14 @@ export default function RevealOverlay({ result, onNext }: Props) {
               <> · hinzugefügt von {track.addedByName ?? track.addedById}</>
             )}
           </div>
+
+          {mode === 'whose-fave' && track.source === 'friends' && track.addedById && (
+            <FaveGuessRow players={players} onAward={onAwardFaveGuess} />
+          )}
+
+          {mode === 'name-that-tune' && correct && (
+            <TuneGuessForm bonus={result.bonus} wagerEnabled={wagerEnabled} onSubmit={onSubmitTuneGuess} />
+          )}
 
           <button className="btn-primary mt-6 w-full" onClick={onNext}>
             Nächste*r Spieler*in →

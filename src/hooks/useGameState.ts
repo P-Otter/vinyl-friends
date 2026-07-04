@@ -9,6 +9,7 @@ import type {
   Track,
 } from '../types';
 import { insertCard, isPlacementCorrect, sortByYear } from '../lib/scoring';
+import { fuzzyMatches, fuzzyMatchesArtist } from '../lib/fuzzy-match';
 
 const PLAYER_COLORS = [
   '#ef4444', // rot
@@ -59,6 +60,7 @@ export function makePlayer(name: string, index: number): Player {
     cards: [],
     attempts: 0,
     hits: 0,
+    bonusPoints: 0,
   };
 }
 
@@ -73,6 +75,12 @@ type GameStore = GameState & {
   nextPlayer: () => void;
   skipTrack: () => void;
   resetGame: () => void;
+
+  // "Wessen Liebling?"
+  awardFaveGuess: (playerId: string) => void;
+
+  // "Artist & Titel raten" — nur direkt nach einer korrekten Platzierung aufrufbar
+  submitTuneGuess: (titleGuess: string, artistGuess: string, wagered: boolean) => void;
 
   // abgeleitet
   currentTrack: () => Track | undefined;
@@ -111,7 +119,7 @@ export const useGameState = create<GameStore>()(
           round: 1,
           lastResult: undefined,
           startedAt: Date.now(),
-          players: get().players.map((p) => ({ ...p, cards: [], attempts: 0, hits: 0 })),
+          players: get().players.map((p) => ({ ...p, cards: [], attempts: 0, hits: 0, bonusPoints: 0 })),
         }),
 
       placeCard: (playerId, insertIndex) => {
@@ -136,6 +144,39 @@ export const useGameState = create<GameStore>()(
               hits: p.hits + (correct ? 1 : 0),
               cards: correct ? insertCard(sorted, track) : p.cards,
             };
+          }),
+        });
+      },
+
+      awardFaveGuess: (playerId) => {
+        set((s) => ({
+          players: s.players.map((p) =>
+            p.id === playerId ? { ...p, bonusPoints: (p.bonusPoints ?? 0) + 1 } : p,
+          ),
+        }));
+      },
+
+      submitTuneGuess: (titleGuess, artistGuess, wagered) => {
+        const state = get();
+        const result = state.lastResult;
+        if (!result || !result.correct) return; // Bonus nur nach korrekter Platzierung
+        const titleCorrect = fuzzyMatches(titleGuess, result.track.name);
+        const artistCorrect = fuzzyMatchesArtist(artistGuess, result.track.artist);
+        const mastered = titleCorrect && artistCorrect;
+
+        set({
+          lastResult: {
+            ...result,
+            bonus: { titleGuess, artistGuess, titleCorrect, artistCorrect, mastered, wagered },
+          },
+          players: state.players.map((p) => {
+            if (p.id !== result.playerId) return p;
+            if (wagered && !mastered) {
+              // Risiko daneben: die gerade platzierte Karte wird wieder entfernt.
+              return { ...p, cards: p.cards.filter((c) => c.id !== result.track.id) };
+            }
+            const bonus = mastered ? (wagered ? 2 : 1) : 0;
+            return { ...p, bonusPoints: (p.bonusPoints ?? 0) + bonus };
           }),
         });
       },
@@ -188,7 +229,7 @@ export const useGameState = create<GameStore>()(
           round: 0,
           lastResult: undefined,
           startedAt: undefined,
-          players: get().players.map((p) => ({ ...p, cards: [], attempts: 0, hits: 0 })),
+          players: get().players.map((p) => ({ ...p, cards: [], attempts: 0, hits: 0, bonusPoints: 0 })),
         }),
 
       currentTrack: () => get().queue[get().currentTrackIndex],

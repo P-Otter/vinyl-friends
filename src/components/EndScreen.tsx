@@ -17,6 +17,9 @@ export default function EndScreen({ players, onNewRound, onBackToSetup }: Props)
   const stats = ranking(players);
   const winner = stats[0];
   const byId = new Map(players.map((p) => [p.id, p]));
+  // Bonus-Spalte nur zeigen, wenn im Modus "Wessen Liebling?"/"Artist & Titel
+  // raten" tatsächlich Bonuspunkte gesammelt wurden — sonst unnötiges "0" überall.
+  const hasBonus = stats.some((s) => s.bonusPoints > 0);
 
   return (
     <div className="space-y-6 text-center">
@@ -53,7 +56,14 @@ export default function EndScreen({ players, onNewRound, onBackToSetup }: Props)
                 />
                 {s.name}
               </span>
-              <span className="font-semibold">{s.cards} Karten</span>
+              <span className="flex items-center gap-2 font-semibold">
+                {hasBonus && s.bonusPoints > 0 && (
+                  <span className="text-xs" style={{ color: t.highlight }}>
+                    🎯 {s.bonusPoints}
+                  </span>
+                )}
+                {s.cards} Karten
+              </span>
             </div>
           );
         })}
