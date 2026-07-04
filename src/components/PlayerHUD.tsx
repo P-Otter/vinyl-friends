@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import type { Player } from '../types';
+import { validatedCount } from '../lib/scoring';
 import { useTheme } from '../hooks/useTheme';
 
 type Props = {
@@ -7,15 +8,17 @@ type Props = {
   currentPlayerId: string;
   targetCards: number;
   isVinylUno?: boolean; // Hand-Countdown statt Karten-Ziel anzeigen
+  isNameThatTune?: boolean; // validierte statt platzierte Kartenzahl anzeigen
 };
 
-function PlayerHUD({ players, currentPlayerId, targetCards, isVinylUno }: Props) {
+function PlayerHUD({ players, currentPlayerId, targetCards, isVinylUno, isNameThatTune }: Props) {
   const t = useTheme();
   return (
     <div className="flex flex-wrap gap-3">
       {players.map((p) => {
         const active = p.id === currentPlayerId;
         const vinylCall = isVinylUno && p.handSize === 1;
+        const bank = p.bonusBank ?? 0;
         return (
           <div
             key={p.id}
@@ -30,8 +33,13 @@ function PlayerHUD({ players, currentPlayerId, targetCards, isVinylUno }: Props)
             <span>{p.name}</span>
             {vinylCall && <span style={{ color: t.highlight }}>🎉 Vinyl!</span>}
             <span style={{ color: t.textMuted }}>
-              {isVinylUno ? `${p.handSize ?? 0} auf der Hand` : `${p.cards.length}/${targetCards}`}
+              {isVinylUno
+                ? `${p.handSize ?? 0} auf der Hand`
+                : isNameThatTune
+                  ? `${validatedCount(p)}/${targetCards} validiert`
+                  : `${p.cards.length}/${targetCards}`}
             </span>
+            {isNameThatTune && bank > 0 && <span style={{ color: t.highlight }}>🎁{bank}</span>}
           </div>
         );
       })}

@@ -28,7 +28,7 @@ export type Player = {
   // Stats fürs Endscreen
   attempts: number;
   hits: number;
-  bonusPoints: number; // "Wessen Liebling?"-Treffer + "Artist & Titel raten"-Treffer + Plattenbörse-Sätze
+  bonusPoints: number; // "Wessen Liebling?"-Treffer + Plattenbörse-Sätze
   // Plattenbörse (Catan-inspiriert): Dekaden-Marken aus korrekten Platzierungen,
   // key = Dekaden-Start (z.B. 1980), tauschbar zwischen Spielern.
   decadeTokens?: Record<number, number>;
@@ -36,6 +36,13 @@ export type Player = {
   // Vinyl! (UNO-inspiriert): Hand schrumpft bei Treffern, wächst bei Fehlern —
   // wer zuerst auf 0 ist, gewinnt (umgekehrt zum Sammel-Prinzip der anderen Modi).
   handSize?: number;
+  // "Artist & Titel raten": platzierte, aber noch nicht validierte Karten (< 2/3
+  // Jahr/Titel/Artist richtig) — zählen NICHT zum Sieg, bis validiert (selbst
+  // oder durch eine gebankte fremde Bonus-Validierung, siehe bonusBank).
+  unvalidatedCardIds?: string[];
+  // "Artist & Titel raten": gewonnene Bonus-Validierungen fremder Karten, die
+  // noch keine eigene offene Karte zum Anwenden gefunden haben (FIFO-Guthaben).
+  bonusBank?: number;
 };
 
 export type GameMode =
@@ -57,8 +64,7 @@ export type MusicSource = 'spotify' | 'preview';
 export type GameSettings = {
   mode: GameMode;
   musicSource: MusicSource;
-  yearTolerance: number; // nur bei classic-year, default 2 (±)
-  wager: boolean; // Confidence-Wager bei name-that-tune
+  yearTolerance: number; // classic-year (Platzierung) + name-that-tune (Jahres-Tipp), default 2 (±)
   ghostTracks: boolean; // anonyme Tracks bei whose-fave
   friendsPlaylistId: string;
   friendsPlaylistName: string;
@@ -75,14 +81,27 @@ export type GameSettings = {
 
 export type GamePhase = 'setup' | 'playing' | 'reveal' | 'finished';
 
-// "Artist & Titel raten": Ergebnis des Bonus-Ratens, fürs Reveal-Overlay.
+// "Artist & Titel raten": Ergebnis eines Jahr/Titel/Artist-Ratens, fürs Reveal-Overlay.
+// Genutzt sowohl für den eigenen Tipp der aktiven Person als auch (via StealAttempt)
+// für die Tipps anderer Spieler auf dieselbe Karte.
 export type BonusGuessResult = {
+  yearGuess: number | null;
   titleGuess: string;
   artistGuess: string;
+  yearCorrect: boolean;
   titleCorrect: boolean;
   artistCorrect: boolean;
-  mastered: boolean; // beide korrekt
-  wagered: boolean; // Confidence-Wager gesetzt?
+  correctCount: number; // 0..3 — ab 2 gilt die Karte als validiert
+};
+
+// "Artist & Titel raten": Steal-Versuch einer anderen (nicht aktiven) Person auf
+// dieselbe Karte — sowohl ein alternativer Platzierungs-Tipp (in der EIGENEN
+// Timeline der stehlenden Person) als auch ein eigener Jahr/Titel/Artist-Tipp.
+export type StealAttempt = {
+  byPlayerId: string;
+  placementGuessIndex: number; // gewählte Lücke in der EIGENEN Timeline von byPlayerId
+  placementCorrect: boolean;
+  guess: BonusGuessResult;
 };
 
 // "Vinyl!": zufälliges Ereignis nach einer Platzierung, fürs Reveal-Overlay.
@@ -97,7 +116,10 @@ export type PlacementResult = {
   playerId: string;
   insertIndex: number; // gewählte Position in der Timeline (0..len)
   correct: boolean;
-  bonus?: BonusGuessResult; // nur im Modus "name-that-tune"
+  bonus?: BonusGuessResult; // nur im Modus "name-that-tune": eigener Jahr/Titel/Artist-Tipp
+  steals?: StealAttempt[]; // nur "name-that-tune": Steal-Versuche anderer Spieler
+  tuneRoundFinished?: boolean; // nur "name-that-tune": Host hat "fertig, auflösen" gewählt
+  finalOwnerId?: string; // nur "name-that-tune": wer die Karte nach Steal-Auflösung bekommt
   decade?: number; // nur "plattenboerse": Dekade der gerade verdienten Marke
   vinylEvent?: VinylEvent; // nur "vinyl-uno": ausgelöstes Zufallsereignis
 };

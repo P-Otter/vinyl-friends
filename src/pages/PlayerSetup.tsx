@@ -80,7 +80,13 @@ export default function PlayerSetup() {
             : settings.winCondition.type === 'cards'
               ? settings.winCondition.n
               : 10;
-        const minNeeded = Math.max(targetCards + 3, 8);
+        // "Artist & Titel raten" braucht im Schnitt deutlich mehr Versuche pro
+        // validierter Karte (Platzierung UND ≥2/3 Bonusfelder nötig) — größerer
+        // Puffer, damit der Pool nicht vorzeitig ausgeht.
+        const minNeeded =
+          settings.mode === 'name-that-tune'
+            ? Math.max(targetCards * 4 + 5, 12)
+            : Math.max(targetCards + 3, 8);
         if (pool.length < minNeeded) {
           throw new Error(
             `Zu wenige Songs im Pool (${pool.length}). Mindestens ${minNeeded} nötig — geh zurück und füg mehr hinzu.`,
@@ -177,7 +183,7 @@ export default function PlayerSetup() {
             {
               id: 'name-that-tune' as const,
               label: 'Artist & Titel raten',
-              hint: 'Nach richtiger Platzierung Titel & Künstler erraten — optional mit Risiko-Wette.',
+              hint: 'Karten zählen erst mit Platzierung UND ≥2/3 (Jahr/Titel/Artist) als validiert. Andere dürfen falsche Platzierungen und schwache Tipps stehlen.',
             },
             {
               id: 'plattenboerse' as const,
@@ -210,21 +216,6 @@ export default function PlayerSetup() {
             </label>
           );
         })}
-        {settings.mode === 'name-that-tune' && (
-          <label className="flex items-center justify-between rounded-lg px-3 py-2 text-sm" style={{ background: t.background }}>
-            <span>
-              Risiko-Wette erlauben
-              <span className="block text-xs" style={{ color: t.textMuted }}>
-                Beide richtig = doppelter Bonus, falsch = Karte weg.
-              </span>
-            </span>
-            <input
-              type="checkbox"
-              checked={settings.wager}
-              onChange={(e) => setSettings({ wager: e.target.checked })}
-            />
-          </label>
-        )}
         {settings.mode === 'vinyl-uno' && (
           <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm" style={{ background: t.background }}>
             <span>Starthand-Größe</span>

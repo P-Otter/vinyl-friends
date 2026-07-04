@@ -3,7 +3,7 @@ import { themeById } from '../lib/queue-builder';
 import { useTheme } from '../hooks/useTheme';
 import Confetti from './theme/Confetti';
 import FaveGuessRow from './FaveGuessRow';
-import TuneGuessForm from './TuneGuessForm';
+import TuneRevealFlow from './TuneRevealFlow';
 import VinylEventBanner from './VinylEventBanner';
 
 type Props = {
@@ -11,9 +11,17 @@ type Props = {
   onNext: () => void;
   mode: GameMode;
   players: Player[];
-  wagerEnabled: boolean;
+  yearTolerance: number;
   onAwardFaveGuess: (playerId: string) => void;
-  onSubmitTuneGuess: (titleGuess: string, artistGuess: string, wagered: boolean) => void;
+  onSubmitTuneGuess: (yearGuess: number | null, titleGuess: string, artistGuess: string) => void;
+  onSubmitTuneSteal: (
+    byPlayerId: string,
+    placementGuessIndex: number,
+    yearGuess: number | null,
+    titleGuess: string,
+    artistGuess: string,
+  ) => void;
+  onFinishTuneRound: () => void;
 };
 
 function sourceLabel(track: Track): string {
@@ -29,22 +37,25 @@ export default function RevealOverlay({
   onNext,
   mode,
   players,
-  wagerEnabled,
+  yearTolerance,
   onAwardFaveGuess,
   onSubmitTuneGuess,
+  onSubmitTuneSteal,
+  onFinishTuneRound,
 }: Props) {
   const { track, correct } = result;
   const t = useTheme();
-  const stampColor = correct ? t.good : t.bad;
-  // "Artist & Titel raten": Titel/Artist erst zeigen, NACHDEM geraten wurde —
-  // sonst steht die Lösung über dem eigenen Rateformular.
-  const tuneGuessPending = mode === 'name-that-tune' && correct && !result.bonus;
+  // "Artist & Titel raten": Platzierung UND Jahr/Titel/Artist bleiben komplett
+  // verborgen, bis der ganze Rate-/Steal-Ablauf abgeschlossen ist — sonst steht
+  // die Lösung (oder zumindest ob's richtig war) über dem Rateformular.
+  const tunePending = mode === 'name-that-tune' && !result.tuneRoundFinished;
+  const stampColor = tunePending ? t.highlight : correct ? t.good : t.bad;
 
   return (
     // overflow-y-auto + min-h-full: auf kleinen Viewports (iPhone quer) wird
     // das Overlay scrollbar, statt den Weiter-Button oben/unten abzuschneiden.
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60">
-      {correct && <Confetti />}
+      {correct && !tunePending && <Confetti />}
       <div className="flex min-h-full items-center justify-center p-4">
         <div
           className="w-full max-w-sm rounded-3xl p-8 text-center"
@@ -54,12 +65,13 @@ export default function RevealOverlay({
             className="mx-auto mb-4 inline-block -rotate-6 rounded-lg px-4 py-1.5 text-xl font-black"
             style={{ border: `3px solid ${stampColor}`, color: stampColor }}
           >
-            {correct ? 'RICHTIG!' : 'DANEBEN!'}
+            {tunePending ? 'WIRD GEPRÜFT…' : correct ? 'RICHTIG!' : 'DANEBEN!'}
           </div>
 
           <div className="mb-1 text-6xl font-black tracking-wide" style={{ fontFamily: 'var(--t-font)' }}>
-            {track.releaseYear || '????'}
-            {track.source !== 'local' &&
+            {tunePending ? '????' : track.releaseYear || '????'}
+            {!tunePending &&
+              track.source !== 'local' &&
               track.releaseDatePrecision !== 'day' &&
               track.releaseYear > 0 && (
                 <span
@@ -71,23 +83,25 @@ export default function RevealOverlay({
                 </span>
               )}
           </div>
-          <div className="text-lg font-bold">{tuneGuessPending ? '🎵 ???' : track.name}</div>
+          <div className="text-lg font-bold">{tunePending ? '🎵 ???' : track.name}</div>
           <div style={{ color: t.textMuted }}>
-            {tuneGuessPending ? 'Erst raten, dann auflösen ↓' : track.artist}
+            {tunePending ? 'Erst raten, dann auflösen ↓' : track.artist}
           </div>
 
-          <div
-            className="mt-6 rounded-xl px-4 py-3 font-bold"
-            style={{ background: `${stampColor}26`, color: stampColor }}
-          >
-            {mode === 'vinyl-uno'
-              ? correct
-                ? '✓ Richtig! Eine Karte weniger auf der Hand'
-                : '✗ Falsch — eine Karte dazugezogen'
-              : correct
-                ? '✓ Richtig platziert! +1 Karte'
-                : '✗ Falsch — keine Karte'}
-          </div>
+          {!tunePending && (
+            <div
+              className="mt-6 rounded-xl px-4 py-3 font-bold"
+              style={{ background: `${stampColor}26`, color: stampColor }}
+            >
+              {mode === 'vinyl-uno'
+                ? correct
+                  ? '✓ Richtig! Eine Karte weniger auf der Hand'
+                  : '✗ Falsch — eine Karte dazugezogen'
+                : correct
+                  ? '✓ Richtig platziert! +1 Karte'
+                  : '✗ Falsch — keine Karte'}
+            </div>
+          )}
 
           <div className="mt-3 text-xs" style={{ color: t.textMuted }}>
             {sourceLabel(track)}
@@ -100,8 +114,17 @@ export default function RevealOverlay({
             <FaveGuessRow players={players} onAward={onAwardFaveGuess} />
           )}
 
-          {mode === 'name-that-tune' && correct && (
-            <TuneGuessForm bonus={result.bonus} wagerEnabled={wagerEnabled} onSubmit={onSubmitTuneGuess} />
+          {mode === 'name-that-tune' && (
+            <div className="mt-4">
+              <TuneRevealFlow
+                result={result}
+                players={players}
+                yearTolerance={yearTolerance}
+                onSubmitOwn={onSubmitTuneGuess}
+                onSubmitSteal={onSubmitTuneSteal}
+                onFinish={onFinishTuneRound}
+              />
+            </div>
           )}
 
           {mode === 'plattenboerse' && result.decade !== undefined && (
@@ -114,9 +137,11 @@ export default function RevealOverlay({
             <VinylEventBanner event={result.vinylEvent} players={players} />
           )}
 
-          <button className="btn-primary mt-6 w-full" onClick={onNext}>
-            Nächste*r Spieler*in →
-          </button>
+          {!tunePending && (
+            <button className="btn-primary mt-6 w-full" onClick={onNext}>
+              Nächste*r Spieler*in →
+            </button>
+          )}
         </div>
       </div>
     </div>

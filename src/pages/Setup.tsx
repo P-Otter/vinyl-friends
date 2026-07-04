@@ -21,7 +21,7 @@ const MODES: { id: GameMode; label: string; hint: string }[] = [
   {
     id: 'name-that-tune',
     label: 'Artist & Titel raten',
-    hint: 'Nach richtiger Platzierung Titel & Künstler erraten — optional mit Risiko-Wette.',
+    hint: 'Karten zählen erst mit Platzierung UND ≥2/3 (Jahr/Titel/Artist) als validiert. Andere dürfen falsche Platzierungen und schwache Tipps stehlen.',
   },
   {
     id: 'plattenboerse',
@@ -118,22 +118,6 @@ export default function Setup() {
           );
         })}
 
-        {settings.mode === 'name-that-tune' && (
-          <label className="flex items-center justify-between rounded-lg bg-panel2 px-3 py-2 text-sm">
-            <span>
-              Risiko-Wette erlauben
-              <span className="block text-xs text-slate-400">
-                Vor der Auflösung wetten: beide richtig = doppelter Bonus, falsch = Karte weg.
-              </span>
-            </span>
-            <input
-              type="checkbox"
-              className="accent-accent"
-              checked={settings.wager}
-              onChange={(e) => setSettings({ wager: e.target.checked })}
-            />
-          </label>
-        )}
       </section>
 
       {settings.mode === 'vinyl-uno' ? (
@@ -167,7 +151,7 @@ export default function Setup() {
               }
               className="w-20 rounded-lg bg-panel2 px-3 py-2 text-center"
             />
-            Karten gewinnt
+            {settings.mode === 'name-that-tune' ? 'validierten Karten gewinnt' : 'Karten gewinnt'}
           </div>
         </section>
       )}

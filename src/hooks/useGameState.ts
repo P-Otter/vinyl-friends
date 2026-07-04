@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
+  BonusGuessResult,
   GameSettings,
   GameState,
   Player,
@@ -9,7 +10,14 @@ import type {
   Track,
   VinylEvent,
 } from '../types';
-import { insertCard, isPlacementCorrect, sortByYear } from '../lib/scoring';
+import {
+  insertCard,
+  isPlacementCorrect,
+  isYearGuessCorrect,
+  resolveTuneRound,
+  sortByYear,
+  validatedCount,
+} from '../lib/scoring';
 import { fuzzyMatches, fuzzyMatchesArtist } from '../lib/fuzzy-match';
 
 const PLAYER_COLORS = [
@@ -28,7 +36,6 @@ export function defaultSettings(): GameSettings {
     mode: 'classic-relative',
     musicSource: 'spotify',
     yearTolerance: 2,
-    wager: false,
     ghostTracks: false,
     friendsPlaylistId: '',
     friendsPlaylistName: '',
@@ -70,6 +77,8 @@ export function makePlayer(name: string, index: number): Player {
     bonusPoints: 0,
     decadeTokens: {},
     completedSets: 0,
+    unvalidatedCardIds: [],
+    bonusBank: 0,
   };
 }
 
@@ -124,6 +133,55 @@ function rollVinylEvent(
   };
 }
 
+/** "Artist & Titel raten": ein Jahr/Titel/Artist-Tipp gegen die echte Karte bewertet. */
+function gradeTuneGuess(
+  result: PlacementResult,
+  yearTolerance: number,
+  yearGuess: number | null,
+  titleGuess: string,
+  artistGuess: string,
+): BonusGuessResult {
+  const yearCorrect = yearGuess !== null && isYearGuessCorrect(result.track, yearGuess, yearTolerance);
+  const titleCorrect = fuzzyMatches(titleGuess, result.track.name);
+  const artistCorrect = fuzzyMatchesArtist(artistGuess, result.track.artist);
+  const correctCount = [yearCorrect, titleCorrect, artistCorrect].filter(Boolean).length;
+  return { yearGuess, titleGuess, artistGuess, yearCorrect, titleCorrect, artistCorrect, correctCount };
+}
+
+/**
+ * "Artist & Titel raten": wendet das Ergebnis von resolveTuneRound tatsächlich an.
+ * Owner bekommt die Karte (ggf. neu einsortiert, falls gestohlen) + wird sofort
+ * validiert ODER landet in unvalidatedCardIds (außer eigenes Bank-Guthaben deckt
+ * es sofort). Gewinnt jemand ANDERES den Bonus, wird bei der Person zuerst die
+ * älteste eigene offene Karte validiert, sonst wandert ein Token in die Bank.
+ */
+function applyTuneResolution(
+  players: Player[],
+  result: PlacementResult,
+  ownerId: string,
+  validated: boolean,
+  bonusWinnerId: string | null,
+): Player[] {
+  const stolen = ownerId !== result.playerId;
+  const bankEarnerId = bonusWinnerId && bonusWinnerId !== ownerId ? bonusWinnerId : null;
+
+  return players.map((p) => {
+    if (p.id === ownerId) {
+      const cards = stolen ? insertCard(sortByYear(p.cards), result.track) : p.cards;
+      if (validated) return { ...p, cards };
+      const bank = p.bonusBank ?? 0;
+      if (bank > 0) return { ...p, cards, bonusBank: bank - 1 };
+      return { ...p, cards, unvalidatedCardIds: [...(p.unvalidatedCardIds ?? []), result.track.id] };
+    }
+    if (p.id === bankEarnerId) {
+      const pending = p.unvalidatedCardIds ?? [];
+      if (pending.length > 0) return { ...p, unvalidatedCardIds: pending.slice(1) };
+      return { ...p, bonusBank: (p.bonusBank ?? 0) + 1 };
+    }
+    return p;
+  });
+}
+
 type GameStore = GameState & {
   // Setup
   setSettings: (patch: Partial<GameSettings>) => void;
@@ -139,8 +197,19 @@ type GameStore = GameState & {
   // "Wessen Liebling?"
   awardFaveGuess: (playerId: string) => void;
 
-  // "Artist & Titel raten" — nur direkt nach einer korrekten Platzierung aufrufbar
-  submitTuneGuess: (titleGuess: string, artistGuess: string, wagered: boolean) => void;
+  // "Artist & Titel raten": eigener blinder Jahr/Titel/Artist-Tipp der aktiven Person
+  submitTuneGuess: (yearGuess: number | null, titleGuess: string, artistGuess: string) => void;
+  // "Artist & Titel raten": Steal-Versuch einer anderen Person (Platzierung in
+  // deren EIGENER Timeline + eigener Jahr/Titel/Artist-Tipp)
+  submitTuneSteal: (
+    byPlayerId: string,
+    placementGuessIndex: number,
+    yearGuess: number | null,
+    titleGuess: string,
+    artistGuess: string,
+  ) => void;
+  // "Artist & Titel raten": Host beendet die Steal-Runde — löst Owner + Bonus-Validierung auf
+  finishTuneRound: () => void;
 
   // Plattenbörse: 1-für-1-Tausch zweier Dekaden-Marken zwischen zwei Spielern
   tradeTokens: (fromId: string, fromDecade: number, toId: string, toDecade: number) => void;
@@ -192,6 +261,8 @@ export const useGameState = create<GameStore>()(
             bonusPoints: 0,
             decadeTokens: {},
             completedSets: 0,
+            unvalidatedCardIds: [],
+            bonusBank: 0,
             handSize: mode === 'vinyl-uno' ? startingHandSize : undefined,
           })),
         });
@@ -246,28 +317,39 @@ export const useGameState = create<GameStore>()(
         }));
       },
 
-      submitTuneGuess: (titleGuess, artistGuess, wagered) => {
+      submitTuneGuess: (yearGuess, titleGuess, artistGuess) => {
         const state = get();
         const result = state.lastResult;
-        if (!result || !result.correct) return; // Bonus nur nach korrekter Platzierung
-        const titleCorrect = fuzzyMatches(titleGuess, result.track.name);
-        const artistCorrect = fuzzyMatchesArtist(artistGuess, result.track.artist);
-        const mastered = titleCorrect && artistCorrect;
+        if (!result || result.bonus) return; // schon abgegeben
+        set({ lastResult: { ...result, bonus: gradeTuneGuess(result, state.settings.yearTolerance, yearGuess, titleGuess, artistGuess) } });
+      },
+
+      submitTuneSteal: (byPlayerId, placementGuessIndex, yearGuess, titleGuess, artistGuess) => {
+        const state = get();
+        const result = state.lastResult;
+        if (!result || result.tuneRoundFinished) return;
+        const stealer = state.players.find((p) => p.id === byPlayerId);
+        if (!stealer) return;
+        const placementCorrect = isPlacementCorrect(sortByYear(stealer.cards), result.track, placementGuessIndex);
+        const attempt = {
+          byPlayerId,
+          placementGuessIndex,
+          placementCorrect,
+          guess: gradeTuneGuess(result, state.settings.yearTolerance, yearGuess, titleGuess, artistGuess),
+        };
+        set({ lastResult: { ...result, steals: [...(result.steals ?? []), attempt] } });
+      },
+
+      finishTuneRound: () => {
+        const state = get();
+        const result = state.lastResult;
+        if (!result || result.tuneRoundFinished || !result.bonus) return;
+        const { ownerId, bonusWinnerId } = resolveTuneRound(result);
+        const validated = bonusWinnerId === ownerId;
 
         set({
-          lastResult: {
-            ...result,
-            bonus: { titleGuess, artistGuess, titleCorrect, artistCorrect, mastered, wagered },
-          },
-          players: state.players.map((p) => {
-            if (p.id !== result.playerId) return p;
-            if (wagered && !mastered) {
-              // Risiko daneben: die gerade platzierte Karte wird wieder entfernt.
-              return { ...p, cards: p.cards.filter((c) => c.id !== result.track.id) };
-            }
-            const bonus = mastered ? (wagered ? 2 : 1) : 0;
-            return { ...p, bonusPoints: (p.bonusPoints ?? 0) + bonus };
-          }),
+          lastResult: { ...result, tuneRoundFinished: true, finalOwnerId: ownerId },
+          players: applyTuneResolution(state.players, result, ownerId, validated, bonusWinnerId),
         });
       },
 
@@ -333,12 +415,15 @@ export const useGameState = create<GameStore>()(
       nextPlayer: () => {
         const state = get();
         const { mode } = state.settings;
-        // Gewinn-Check: Standardmodi = Karten-Race, "vinyl-uno" = Rennen auf leere Hand.
+        // Gewinn-Check: Standardmodi = Karten-Race, "vinyl-uno" = Rennen auf leere Hand,
+        // "name-that-tune" = validierte (nicht nur platzierte) Karten zählen.
         const win = state.settings.winCondition;
         const reachedCards =
           mode !== 'vinyl-uno' &&
           win.type === 'cards' &&
-          state.players.some((p) => p.cards.length >= win.n);
+          state.players.some((p) =>
+            mode === 'name-that-tune' ? validatedCount(p) >= win.n : p.cards.length >= win.n,
+          );
         const handEmpty = mode === 'vinyl-uno' && state.players.some((p) => (p.handSize ?? 0) <= 0);
         const timeUp =
           win.type === 'time' &&
@@ -389,6 +474,8 @@ export const useGameState = create<GameStore>()(
             bonusPoints: 0,
             decadeTokens: {},
             completedSets: 0,
+            unvalidatedCardIds: [],
+            bonusBank: 0,
             handSize: undefined,
           })),
         }),

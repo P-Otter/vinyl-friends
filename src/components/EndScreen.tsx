@@ -16,11 +16,12 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 export default function EndScreen({ players, mode, onNewRound, onBackToSetup }: Props) {
   const t = useTheme();
   const isVinylUno = mode === 'vinyl-uno';
+  const isNameThatTune = mode === 'name-that-tune';
   const stats = ranking(players, mode);
   const winner = stats[0];
   const byId = new Map(players.map((p) => [p.id, p]));
-  // Bonus-Spalte nur zeigen, wenn im Modus "Wessen Liebling?"/"Artist & Titel
-  // raten"/Plattenbörse tatsächlich Bonuspunkte gesammelt wurden.
+  // Bonus-Spalte nur zeigen, wenn im Modus "Wessen Liebling?"/Plattenbörse
+  // tatsächlich Bonuspunkte gesammelt wurden.
   const hasBonus = stats.some((s) => s.bonusPoints > 0);
 
   return (
@@ -43,7 +44,9 @@ export default function EndScreen({ players, mode, onNewRound, onBackToSetup }: 
               ? winner.handSize === 0
                 ? 'gewinnt — Hand leer! 🎉'
                 : `gewinnt mit noch ${winner.handSize} Karte${winner.handSize === 1 ? '' : 'n'} in der Hand`
-              : `gewinnt mit ${winner.cards} Karten`}
+              : isNameThatTune
+                ? `gewinnt mit ${winner.validated ?? 0} validierten Karten`
+                : `gewinnt mit ${winner.cards} Karten`}
           </div>
         </div>
       )}
@@ -68,7 +71,16 @@ export default function EndScreen({ players, mode, onNewRound, onBackToSetup }: 
                     🎯 {s.bonusPoints}
                   </span>
                 )}
-                {isVinylUno ? `${s.handSize ?? 0} in der Hand` : `${s.cards} Karten`}
+                {isNameThatTune && (p?.bonusBank ?? 0) > 0 && (
+                  <span className="text-xs" style={{ color: t.highlight }}>
+                    🎁 {p?.bonusBank}
+                  </span>
+                )}
+                {isVinylUno
+                  ? `${s.handSize ?? 0} in der Hand`
+                  : isNameThatTune
+                    ? `${s.validated ?? 0}/${s.cards} validiert`
+                    : `${s.cards} Karten`}
               </span>
             </div>
           );

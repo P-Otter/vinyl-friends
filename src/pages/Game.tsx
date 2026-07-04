@@ -29,6 +29,8 @@ export default function Game() {
     skipTrack,
     awardFaveGuess,
     submitTuneGuess,
+    submitTuneSteal,
+    finishTuneRound,
     tradeTokens,
     redeemSet,
   } = useGameState();
@@ -61,12 +63,10 @@ export default function Game() {
   );
   // "Artist & Titel raten": die gerade platzierte Karte steht schon in der Timeline
   // (Farbe/Jahr korrekt), aber der Songname muss versteckt bleiben, bis der
-  // Bonus-Tipp abgegeben ist — sonst verrät die Timeline die Lösung hinter dem Overlay.
+  // komplette Rate-/Steal-Ablauf abgeschlossen ist — sonst verrät die Timeline
+  // die Lösung (oder zumindest die Korrektheit) hinter dem Overlay.
   const tuneGuessPending =
-    phase === 'reveal' &&
-    settings.mode === 'name-that-tune' &&
-    lastResult?.correct === true &&
-    !lastResult.bonus;
+    phase === 'reveal' && settings.mode === 'name-that-tune' && !lastResult?.tuneRoundFinished;
 
   const [started, setStarted] = useState(false);
   const [selectedGap, setSelectedGap] = useState<number | null>(null);
@@ -240,7 +240,7 @@ export default function Game() {
           selectedGap={selectedGap}
           onSelectGap={setSelectedGap}
           disabled={!started}
-          maskedCardId={tuneGuessPending ? lastResult.track.id : undefined}
+          maskedCardId={tuneGuessPending ? lastResult?.track.id : undefined}
         />
         <button
           className="btn-primary w-full"
@@ -263,6 +263,7 @@ export default function Game() {
           currentPlayerId={activePlayer.id}
           targetCards={targetCards}
           isVinylUno={isVinylUno}
+          isNameThatTune={settings.mode === 'name-that-tune'}
         />
       </section>
 
@@ -276,9 +277,11 @@ export default function Game() {
           onNext={nextPlayer}
           mode={settings.mode}
           players={players}
-          wagerEnabled={settings.wager}
+          yearTolerance={settings.yearTolerance}
           onAwardFaveGuess={awardFaveGuess}
           onSubmitTuneGuess={submitTuneGuess}
+          onSubmitTuneSteal={submitTuneSteal}
+          onFinishTuneRound={finishTuneRound}
         />
       )}
     </div>

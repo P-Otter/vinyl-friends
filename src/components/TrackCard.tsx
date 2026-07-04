@@ -5,7 +5,7 @@ import { useTheme } from '../hooks/useTheme';
 type Props = {
   track: Track;
   accent?: string;
-  masked?: boolean; // "Artist & Titel raten": Songname verstecken, solange der Bonus-Tipp noch aussteht
+  masked?: boolean; // "Artist & Titel raten": Jahr+Songname verstecken, solange der Rate-Ablauf noch läuft
 };
 
 // Textbasierte Karte (Jahr + Farbbalken + Songname) statt Cover-Thumbnail —
@@ -20,8 +20,8 @@ function TrackCard({ track, accent, masked }: Props) {
       style={{ background: t.surface, border: `${t.strokeWidth}px solid ${t.surfaceStroke}`, boxShadow: 'var(--t-shadow)' }}
     >
       <div className="text-xl font-black leading-none" style={{ fontFamily: 'var(--t-font)' }}>
-        {track.releaseYear || '–'}
-        {track.releaseDatePrecision !== 'day' && track.releaseYear > 0 && (
+        {masked ? '????' : track.releaseYear || '–'}
+        {!masked && track.releaseDatePrecision !== 'day' && track.releaseYear > 0 && (
           <span style={{ color: t.highlight }} title="lt. Album, kann bei Compilations abweichen">
             *
           </span>
