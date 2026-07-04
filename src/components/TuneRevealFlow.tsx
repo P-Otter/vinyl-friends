@@ -283,13 +283,16 @@ function TuneBreakdown({
 
   return (
     <div className="mt-2 space-y-3 text-left">
-      {!result.correct && (
-        <div className="rounded-xl px-3 py-2 text-sm font-bold" style={{ background: `${t.bad}1a`, color: t.bad }}>
-          {stolen
+      <div
+        className="rounded-xl px-3 py-2 text-sm font-bold"
+        style={{ background: result.correct ? `${t.good}1a` : `${t.bad}1a`, color: result.correct ? t.good : t.bad }}
+      >
+        {result.correct
+          ? `📍 ${nameOf(result.playerId)} hat richtig platziert und bekommt die Karte.`
+          : stolen
             ? `📍 Falsch platziert — ${nameOf(result.finalOwnerId!)} hat die Karte richtig einsortiert und übernimmt sie!`
             : '📍 Falsch platziert — niemand hat die richtige Position gefunden, Karte bleibt liegen.'}
-        </div>
-      )}
+      </div>
       {result.bonus && <AttemptCard name={nameOf(result.playerId)} guess={result.bonus} t={t} />}
       {(result.steals ?? []).map((s) => (
         <AttemptCard key={s.byPlayerId} name={nameOf(s.byPlayerId)} guess={s.guess} t={t} />
