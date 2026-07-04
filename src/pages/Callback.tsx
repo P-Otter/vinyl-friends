@@ -20,7 +20,14 @@ export default function Callback() {
     const authError = params.get('error');
 
     if (authError) {
-      setError(`Spotify-Login abgebrochen: ${authError}`);
+      // access_denied kommt u.a., wenn der Account nicht im Entwickler-Dashboard
+      // freigeschaltet ist (Spotifys Development-Mode-Limit) — häufigster Fall
+      // für Freunde/Fremde ohne Einladung, daher eigene, verständliche Meldung.
+      setError(
+        authError === 'access_denied'
+          ? 'Dieser Spotify-Account ist nicht freigeschaltet — der Host muss ihn im Spotify-Dashboard erst hinzufügen. Nutze in der Zwischenzeit den Pool-Modus (Startseite).'
+          : `Spotify-Login abgebrochen: ${authError}`,
+      );
       return;
     }
     if (!code || !state) {

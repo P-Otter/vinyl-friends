@@ -73,6 +73,9 @@ export default function Login() {
             <SpotifyLoginButton onClick={login} disabled={!configured || status === 'loading'} />
             <p className="text-xs" style={{ color: t.textMuted }}>
               Mit euren echten Playlists — benötigt Spotify Premium beim Host.
+              <br />
+              Nur für Accounts, die der Host manuell freigeschaltet hat (Spotifys
+              Entwickler-Limit) — sonst bitte den Pool-Modus oben nutzen.
             </p>
           </>
         )}
