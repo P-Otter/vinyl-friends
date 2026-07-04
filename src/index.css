@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Fallback-Werte unten = das Default-Theme "Tinte & Papier" (src/theme/tokens.ts,
+ * THEMES[0]). useThemeCssVars() überschreibt sie per useLayoutEffect (läuft vor
+ * dem ersten Bildaufbau) — die Fallbacks greifen nur, falls JS je verzögert
+ * startet, und zeigen dann direkt das echte Default-Theme statt eines fremden
+ * Zwischenstands.
+ */
 @layer base {
   html,
   body,
@@ -9,24 +16,56 @@
     height: 100%;
   }
   body {
-    @apply bg-ink text-slate-100 antialiased;
+    @apply antialiased;
+    background: var(--t-bg, #f3ecdc);
+    color: var(--t-text, #1a1820);
+    font-family: var(--t-font, 'Baloo 2', 'Inter', system-ui, sans-serif);
+    transition: background-color 0.2s ease;
   }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold transition disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-black transition disabled:cursor-not-allowed disabled:opacity-40;
   }
   .btn-primary {
-    @apply btn bg-accent text-black hover:brightness-110 active:brightness-95;
+    @apply btn;
+    background: var(--t-accent, #1a1820);
+    color: var(--t-on-accent, #f3ecdc);
+    box-shadow: var(--t-shadow, 4px 4px 0 #1a1820);
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+  .btn-primary:active:not(:disabled) {
+    filter: brightness(0.95);
   }
   .btn-ghost {
-    @apply btn bg-panel2 text-slate-100 hover:bg-panel2/70;
+    @apply btn;
+    background: var(--t-surface, #f3ecdc);
+    color: var(--t-text, #1a1820);
+    border: var(--t-stroke-w, 2.5px) solid var(--t-stroke, #1a1820);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    filter: brightness(0.97);
   }
   .panel {
-    @apply rounded-2xl bg-panel p-6 shadow-lg shadow-black/30;
+    @apply rounded-3xl p-6;
+    background: var(--t-surface, #f3ecdc);
+    border: var(--t-stroke-w, 2.5px) solid var(--t-stroke, #1a1820);
+    box-shadow: var(--t-shadow, 4px 4px 0 #1a1820);
   }
   .field-label {
-    @apply mb-2 block text-sm font-semibold uppercase tracking-wide text-slate-400;
+    @apply mb-2 block text-xs font-black uppercase tracking-widest;
+    color: var(--t-text-muted, #1a182080);
+  }
+}
+
+@keyframes vf-bounce {
+  from {
+    transform: scaleY(0.7);
+  }
+  to {
+    transform: scaleY(1);
   }
 }

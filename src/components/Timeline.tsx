@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import type { Track } from '../types';
+import { useTheme } from '../hooks/useTheme';
 import TrackCard from './TrackCard';
 
 type Props = {
@@ -14,29 +15,36 @@ type Props = {
  * Gap i bedeutet: Karte landet VOR cards[i] (Gap 0 = ganz links, cards.length = ganz rechts).
  */
 function Timeline({ cards, selectedGap, onSelectGap, disabled }: Props) {
-  const Gap = ({ index }: { index: number }) => (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => onSelectGap(index)}
-      aria-label={`hier einsortieren (Position ${index})`}
-      className={
-        'mx-0.5 flex h-24 w-10 shrink-0 items-center justify-center rounded-lg border-2 border-dashed text-xs transition ' +
-        (selectedGap === index
-          ? 'border-accent bg-accent/20 text-accent'
-          : 'border-slate-600 text-slate-600 hover:border-slate-400 hover:text-slate-400') +
-        (disabled ? ' pointer-events-none opacity-40' : '')
-      }
-    >
-      {selectedGap === index ? '✓' : 'hier'}
-    </button>
-  );
+  const t = useTheme();
+
+  const Gap = ({ index }: { index: number }) => {
+    const active = selectedGap === index;
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onSelectGap(index)}
+        aria-label={`hier einsortieren (Position ${index})`}
+        className={
+          'mx-0.5 flex h-24 w-10 shrink-0 items-center justify-center rounded-lg border-2 border-dashed text-xs font-bold transition' +
+          (disabled ? ' pointer-events-none opacity-40' : '')
+        }
+        style={{
+          borderColor: active ? t.highlight : `${t.textMuted}`,
+          background: active ? `${t.highlight}26` : 'transparent',
+          color: active ? t.highlight : t.textMuted,
+        }}
+      >
+        {active ? '✓' : 'hier'}
+      </button>
+    );
+  };
 
   if (cards.length === 0) {
     return (
       <div className="flex items-center gap-2">
         <Gap index={0} />
-        <span className="text-sm text-slate-500">
+        <span className="text-sm" style={{ color: t.textMuted }}>
           Noch keine Karten — die erste landet automatisch korrekt.
         </span>
       </div>

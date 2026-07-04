@@ -6,6 +6,9 @@ import { useNavigate } from 'react-router-dom';
 import { searchSongs } from '../lib/itunes';
 import { usePool } from '../hooks/usePool';
 import { useGameState } from '../hooks/useGameState';
+import { useTheme } from '../hooks/useTheme';
+import ThemedTitle from '../components/theme/ThemedTitle';
+import ThemedField from '../components/theme/ThemedField';
 import type { Track } from '../types';
 import packsData from '../data/song-packs.json';
 
@@ -129,6 +132,8 @@ export default function PoolBuilder() {
     setImporting(false);
   };
 
+  const t = useTheme();
+
   const start = () => {
     setSettings({
       musicSource: 'preview',
@@ -141,8 +146,8 @@ export default function PoolBuilder() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Eigenen Pool bauen</h1>
-      <p className="text-sm text-slate-400">
+      <ThemedTitle size={30}>Eigenen Pool bauen</ThemedTitle>
+      <p className="text-sm" style={{ color: t.textMuted }}>
         Ohne Spotify, ohne Konto — gespielt wird mit 30-Sekunden-Hörproben.
       </p>
 
@@ -153,18 +158,29 @@ export default function PoolBuilder() {
             <button
               key={pack.id}
               onClick={() => addPack(pack)}
-              className="flex w-24 shrink-0 flex-col items-center gap-1 rounded-xl bg-panel2 px-2 py-3 text-center hover:bg-panel2/70"
+              className="flex w-24 shrink-0 flex-col items-center gap-1 rounded-xl px-2 py-3 text-center"
+              style={{ background: t.background, border: `1px solid ${t.surfaceStroke}4d` }}
             >
               <span className="text-2xl">{pack.emoji}</span>
               <span className="text-[11px] font-semibold leading-tight">{pack.name}</span>
-              <span className="text-[10px] text-accent">{pack.songs.length}</span>
+              <span className="text-[10px]" style={{ color: t.highlight }}>
+                {pack.songs.length}
+              </span>
             </button>
           ))}
         </div>
       </section>
 
-      {info && <p className="text-sm text-emerald-300">✓ {info}</p>}
-      {error && <p className="text-sm text-red-300">{error}</p>}
+      {info && (
+        <p className="text-sm font-semibold" style={{ color: t.good }}>
+          ✓ {info}
+        </p>
+      )}
+      {error && (
+        <p className="text-sm font-semibold" style={{ color: t.bad }}>
+          {error}
+        </p>
+      )}
 
       <section className="panel space-y-4">
         <div className="flex gap-2">
@@ -184,45 +200,50 @@ export default function PoolBuilder() {
 
         {tab === 'search' ? (
           <div className="space-y-2">
-            <input
+            <ThemedField
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Song oder Künstler …"
-              className="w-full rounded-lg bg-panel2 px-3 py-2"
+              className="w-full"
             />
-            {searching && <p className="text-xs text-slate-500">Suche…</p>}
+            {searching && (
+              <p className="text-xs" style={{ color: t.textMuted }}>
+                Suche…
+              </p>
+            )}
             {results.map((track) => {
               const added = poolIds.has(track.id);
               return (
                 <button
                   key={track.id}
                   onClick={() => toggleTrack(track)}
-                  className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-panel2/60"
+                  className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left"
                 >
-                  <span className="w-12 shrink-0 font-mono text-sm font-bold text-accent">
+                  <span className="w-12 shrink-0 font-mono text-sm font-bold" style={{ color: t.highlight }}>
                     {track.releaseYear}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{track.name}</span>
-                    <span className="block truncate text-xs text-slate-400">{track.artist}</span>
+                    <span className="block truncate text-xs" style={{ color: t.textMuted }}>
+                      {track.artist}
+                    </span>
                   </span>
-                  <span className={added ? 'text-emerald-400' : 'text-accent'}>
-                    {added ? '✓' : '+'}
-                  </span>
+                  <span style={{ color: added ? t.good : t.highlight }}>{added ? '✓' : '+'}</span>
                 </button>
               );
             })}
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-xs text-slate-400">
+            <p className="text-xs" style={{ color: t.textMuted }}>
               Pro Zeile ein Song („Künstler – Titel“) — z. B. aus einer exportierten Playlist.
             </p>
-            <textarea
+            <ThemedField
+              as="textarea"
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
               rows={6}
-              className="w-full rounded-lg bg-panel2 px-3 py-2 text-base"
+              className="w-full text-base"
             />
             <button
               className="btn-primary w-full"
@@ -239,28 +260,31 @@ export default function PoolBuilder() {
         <div className="flex items-center justify-between">
           <label className="field-label mb-0">Dein Pool · {pool.length}</label>
           {pool.length > 0 && (
-            <button className="text-xs text-red-300 underline" onClick={clear}>
+            <button className="text-xs font-semibold underline" style={{ color: t.bad }} onClick={clear}>
               Pool leeren
             </button>
           )}
         </div>
         {pool.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm" style={{ color: t.textMuted }}>
             Noch leer — tippe ein Pack an, such Songs oder füg eine Liste ein.
           </p>
         ) : (
           <div className="max-h-64 space-y-1 overflow-y-auto">
             {[...pool].reverse().map((track) => (
               <div key={track.id} className="flex items-center gap-3 py-1">
-                <span className="w-12 shrink-0 font-mono text-xs font-bold text-accent">
+                <span className="w-12 shrink-0 font-mono text-xs font-bold" style={{ color: t.highlight }}>
                   {track.releaseYear}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm">{track.name}</span>
-                  <span className="block truncate text-xs text-slate-500">{track.artist}</span>
+                  <span className="block truncate text-xs" style={{ color: t.textMuted }}>
+                    {track.artist}
+                  </span>
                 </span>
                 <button
-                  className="min-h-[40px] min-w-[40px] text-slate-500 hover:text-red-300"
+                  className="min-h-[40px] min-w-[40px]"
+                  style={{ color: t.textMuted }}
                   onClick={() => remove(track.id)}
                 >
                   ✕

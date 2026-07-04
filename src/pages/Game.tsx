@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGameState } from '../hooks/useGameState';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
 import { usePreviewPlayer } from '../hooks/usePreviewPlayer';
+import { useTheme } from '../hooks/useTheme';
 import { randomOffsetMs } from '../lib/queue-builder';
 import { sortByYear } from '../lib/scoring';
 import Timeline from '../components/Timeline';
@@ -12,6 +13,7 @@ import RevealOverlay from '../components/RevealOverlay';
 
 export default function Game() {
   const navigate = useNavigate();
+  const t = useTheme();
   const {
     phase,
     settings,
@@ -137,16 +139,18 @@ export default function Game() {
   // Snippet-Modus: nach lengthSec automatisch pausieren.
   useEffect(() => {
     if (!started || !settings.snippetMode.enabled) return;
-    const t = window.setTimeout(
+    const timeoutId = window.setTimeout(
       () => void player.pause().catch(() => {}),
       settings.snippetMode.lengthSec * 1000,
     );
-    return () => window.clearTimeout(t);
+    return () => window.clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started, settings.snippetMode.enabled, settings.snippetMode.lengthSec]);
 
   if (!track || !activePlayer) {
-    return <p className="text-slate-400">Lade Spiel…</p>;
+    return (
+      <p style={{ color: t.textMuted }}>Lade Spiel…</p>
+    );
   }
 
   const playerReady = isPreviewMode || player.status === 'ready';
@@ -154,13 +158,16 @@ export default function Game() {
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between text-sm">
-        <span className="text-slate-400">Runde {round}</span>
-        <span className="flex items-center gap-2 font-semibold">
+        <span className="font-bold" style={{ color: t.textMuted }}>
+          Runde {round}
+        </span>
+        <span className="flex items-center gap-2 font-black" style={{ color: activePlayer.color }}>
           <span className="h-3 w-3 rounded-full" style={{ backgroundColor: activePlayer.color }} />
           {activePlayer.name} ist dran
         </span>
         <button
-          className="text-slate-400 underline hover:text-slate-200 disabled:opacity-40"
+          className="underline disabled:opacity-40"
+          style={{ color: t.textMuted }}
           onClick={skipTrack}
           disabled={busy}
         >
@@ -186,9 +193,13 @@ export default function Game() {
           onTogglePlay={togglePlay}
           disabled={!playerReady || busy}
         />
-        {playError && <p className="mt-3 text-sm text-red-300">{playError}</p>}
+        {playError && (
+          <p className="mt-3 text-sm font-semibold" style={{ color: t.bad }}>
+            {playError}
+          </p>
+        )}
         {!isPreviewMode && (
-          <label className="mt-3 flex items-center gap-2 text-xs text-slate-400">
+          <label className="mt-3 flex items-center gap-2 text-xs" style={{ color: t.textMuted }}>
             <input
               type="checkbox"
               checked={smoothProgress}
@@ -196,7 +207,7 @@ export default function Game() {
               className="accent-accent"
             />
             Flüssige Fortschrittsanzeige
-            <span className="text-slate-500">— bei Rucklern ausschalten</span>
+            <span>— bei Rucklern ausschalten</span>
           </label>
         )}
       </section>
@@ -204,7 +215,7 @@ export default function Game() {
       <section className="panel space-y-4">
         <div className="flex items-center justify-between">
           <label className="field-label mb-0">Deine Timeline — wohin gehört der Song?</label>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs" style={{ color: t.textMuted }}>
             älter ← → neuer (Jahre erst beim Reveal)
           </span>
         </div>
@@ -219,10 +230,10 @@ export default function Game() {
           disabled={!started || selectedGap === null}
           onClick={confirmPlacement}
         >
-          Platzieren & aufdecken
+          Platzieren &amp; aufdecken
         </button>
         {!started && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs" style={{ color: t.textMuted }}>
             Erst „Song starten" — dann eine Position wählen.
           </p>
         )}

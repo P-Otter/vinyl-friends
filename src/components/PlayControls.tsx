@@ -1,3 +1,8 @@
+import { useTheme } from '../hooks/useTheme';
+import VinylDisc from './theme/VinylDisc';
+import WaveformView from './theme/WaveformView';
+import RingPlayButton from './theme/RingPlayButton';
+
 type Props = {
   isPlaying: boolean;
   positionMs: number;
@@ -24,28 +29,37 @@ export default function PlayControls({
   onTogglePlay,
   disabled,
 }: Props) {
-  const pct = durationMs > 0 ? Math.min(100, (positionMs / durationMs) * 100) : 0;
-
-  if (!started) {
-    return (
-      <button className="btn-primary w-full py-6 text-xl" onClick={onStart} disabled={disabled}>
-        ▶ Song starten
-      </button>
-    );
-  }
+  const t = useTheme();
+  const pct = durationMs > 0 ? Math.min(1, positionMs / durationMs) : 0;
 
   return (
-    <div className="space-y-3">
-      <button className="btn-ghost w-full py-4 text-lg" onClick={onTogglePlay} disabled={disabled}>
-        {isPlaying ? '⏸ Pause' : '▶ Weiter'}
-      </button>
-      <div className="flex items-center gap-3 text-xs text-slate-400">
-        <span>{fmt(positionMs)}</span>
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-panel2">
-          <div className="h-full bg-accent transition-all" style={{ width: `${pct}%` }} />
-        </div>
-        <span>{fmt(durationMs)}</span>
-      </div>
+    <div className="flex flex-col items-center gap-4">
+      <VinylDisc spinning={isPlaying} size={104} />
+      <WaveformView playing={isPlaying} />
+
+      {!started ? (
+        <button
+          className="btn-primary flex w-full items-center justify-center gap-2 py-4 text-lg"
+          onClick={onStart}
+          disabled={disabled}
+        >
+          ▶ Song starten
+        </button>
+      ) : (
+        <>
+          <RingPlayButton isPlaying={isPlaying} progress={pct} onClick={onTogglePlay} disabled={disabled} />
+          <div className="flex w-full items-center gap-3 text-xs" style={{ color: t.textMuted }}>
+            <span>{fmt(positionMs)}</span>
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ background: `${t.text}1a` }}>
+              <div
+                className="h-full transition-all"
+                style={{ width: `${pct * 100}%`, background: t.accent }}
+              />
+            </div>
+            <span>{fmt(durationMs)}</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }

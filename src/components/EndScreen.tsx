@@ -1,5 +1,8 @@
 import type { Player } from '../types';
 import { ranking } from '../lib/scoring';
+import { useTheme } from '../hooks/useTheme';
+import ThemedTitle from './theme/ThemedTitle';
+import Confetti from './theme/Confetti';
 
 type Props = {
   players: Player[];
@@ -10,15 +13,31 @@ type Props = {
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 export default function EndScreen({ players, onNewRound, onBackToSetup }: Props) {
+  const t = useTheme();
   const stats = ranking(players);
   const winner = stats[0];
   const byId = new Map(players.map((p) => [p.id, p]));
 
   return (
     <div className="space-y-6 text-center">
-      <h1 className="text-4xl font-extrabold">
-        🏆 {winner ? `${winner.name} gewinnt!` : 'Spielende'}
-      </h1>
+      {winner && <Confetti />}
+      <ThemedTitle size={34} className="mx-auto">
+        {t.uppercaseTitles ? 'SPIEL VORBEI!' : 'Spiel vorbei!'}
+      </ThemedTitle>
+
+      {winner && (
+        <div className="mx-auto max-w-md space-y-1">
+          <span className="text-3xl" style={{ color: t.highlight }}>
+            ♛
+          </span>
+          <div className="text-2xl font-black" style={{ color: byId.get(winner.playerId)?.color ?? t.text }}>
+            {winner.name}
+          </div>
+          <div className="text-sm font-semibold" style={{ color: t.textMuted }}>
+            gewinnt mit {winner.cards} Karten
+          </div>
+        </div>
+      )}
 
       <section className="panel mx-auto max-w-md space-y-2 text-left">
         <h2 className="field-label">Endstand</h2>
@@ -42,7 +61,7 @@ export default function EndScreen({ players, onNewRound, onBackToSetup }: Props)
 
       <section className="panel mx-auto max-w-md space-y-1 text-left text-sm">
         <h2 className="field-label">Stats</h2>
-        <div className="text-slate-300">
+        <div style={{ color: t.textMuted }}>
           Trefferquote:{' '}
           {stats
             .map((s) => `${s.name} ${Math.round(s.accuracy * 100)}%`)

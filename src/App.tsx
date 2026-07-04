@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth-context';
 import { useGameState } from './hooks/useGameState';
+import { useThemeCssVars } from './hooks/useTheme';
+import ThemedBackground from './components/theme/ThemedBackground';
 import Login from './pages/Login';
 import Callback from './pages/Callback';
 import Setup from './pages/Setup';
@@ -42,8 +44,13 @@ function RequireAuth({ children }: { children: ReactNode }) {
 }
 
 function Shell() {
+  useThemeCssVars();
   return (
-    <div className="mx-auto min-h-full max-w-5xl px-4 py-8">
+    <div
+      className="relative mx-auto min-h-full max-w-5xl px-4 py-8"
+      style={{ color: 'var(--t-text)', fontFamily: 'var(--t-font)' }}
+    >
+      <ThemedBackground />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/callback" element={<Callback />} />

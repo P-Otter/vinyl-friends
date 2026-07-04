@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { makePlayer, useGameState } from '../hooks/useGameState';
 import { usePool } from '../hooks/usePool';
+import { useTheme } from '../hooks/useTheme';
 import { buildQueue } from '../lib/queue-builder';
+import ThemedTitle from '../components/theme/ThemedTitle';
+import ThemedField from '../components/theme/ThemedField';
 import type { Track } from '../types';
 
 const DEFAULT_NAMES = ['Spieler 1', 'Spieler 2'];
@@ -85,28 +88,32 @@ export default function PlayerSetup() {
   };
 
   const validNames = list.length >= 2 && list.every((p) => p.name.trim().length > 0);
+  const t = useTheme();
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Wer spielt mit?</h1>
+      <ThemedTitle size={30}>Wer spielt mit?</ThemedTitle>
 
       <section className="panel space-y-3">
         {list.map((p, i) => (
           <div key={p.id} className="flex items-center gap-3">
-            <span className="w-5 text-slate-500">{i + 1}.</span>
+            <span className="w-5" style={{ color: t.textMuted }}>
+              {i + 1}.
+            </span>
             <span
               className="h-4 w-4 shrink-0 rounded-full"
               style={{ backgroundColor: p.color }}
             />
-            <input
+            <ThemedField
               value={p.name}
               onChange={(e) => rename(p.id, e.target.value)}
-              className="flex-1 rounded-lg bg-panel2 px-3 py-2"
+              className="flex-1"
               maxLength={20}
             />
             <div className="flex gap-1">
               <button
-                className="rounded bg-panel2 px-3 py-2 text-sm disabled:opacity-30"
+                className="rounded px-3 py-2 text-sm disabled:opacity-30"
+                style={{ background: t.background, border: `1px solid ${t.surfaceStroke}4d` }}
                 onClick={() => move(i, -1)}
                 disabled={i === 0}
                 title="nach oben"
@@ -114,7 +121,8 @@ export default function PlayerSetup() {
                 ↑
               </button>
               <button
-                className="rounded bg-panel2 px-3 py-2 text-sm disabled:opacity-30"
+                className="rounded px-3 py-2 text-sm disabled:opacity-30"
+                style={{ background: t.background, border: `1px solid ${t.surfaceStroke}4d` }}
                 onClick={() => move(i, 1)}
                 disabled={i === list.length - 1}
                 title="nach unten"
@@ -123,7 +131,8 @@ export default function PlayerSetup() {
               </button>
             </div>
             <button
-              className="rounded bg-panel2 px-3 py-2 text-sm text-red-300 disabled:opacity-30"
+              className="rounded px-3 py-2 text-sm disabled:opacity-30"
+              style={{ background: t.background, border: `1px solid ${t.surfaceStroke}4d`, color: t.bad }}
               onClick={() => remove(p.id)}
               disabled={list.length <= 2}
               title="entfernen"
@@ -137,11 +146,15 @@ export default function PlayerSetup() {
             + Spieler hinzufügen
           </button>
         )}
-        <p className="text-xs text-slate-500">2–8 Spieler · Reihenfolge mit ↑ ↓ sortieren</p>
+        <p className="text-xs" style={{ color: t.textMuted }}>
+          2–8 Spieler · Reihenfolge mit ↑ ↓ sortieren
+        </p>
       </section>
 
       {error && (
-        <div className="rounded-xl bg-red-500/10 p-4 text-sm text-red-300">{error}</div>
+        <div className="rounded-xl p-4 text-sm font-semibold" style={{ background: `${t.bad}1a`, color: t.bad }}>
+          {error}
+        </div>
       )}
 
       <div className="flex justify-between">
