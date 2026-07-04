@@ -77,6 +77,13 @@ export type GameSettings = {
   snippetMode: { enabled: boolean; lengthSec: number };
   randomOffset: boolean;
   startingHandSize: number; // nur "vinyl-uno": Kartenzahl zu Spielbeginn
+  // "Artist & Titel raten": Sieg braucht winCondition.n TOTAL platzierte Karten
+  // UND mindestens requiredMastered davon validiert (2 unabhängige Zahlen, wie
+  // in der iOS-App) — nicht nur eine Gesamtzahl validierter Karten.
+  requiredMastered: number;
+  // "Artist & Titel raten": wie viele von {Jahr, Titel, Artist} müssen stimmen,
+  // damit eine Karte als validiert zählt (2 = leichter, 3 = alle nötig).
+  masteryThreshold: number;
 };
 
 export type GamePhase = 'setup' | 'playing' | 'reveal' | 'finished';

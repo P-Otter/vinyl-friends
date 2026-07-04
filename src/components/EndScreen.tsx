@@ -45,7 +45,7 @@ export default function EndScreen({ players, mode, onNewRound, onBackToSetup }: 
                 ? 'gewinnt — Hand leer! 🎉'
                 : `gewinnt mit noch ${winner.handSize} Karte${winner.handSize === 1 ? '' : 'n'} in der Hand`
               : isNameThatTune
-                ? `gewinnt mit ${winner.validated ?? 0} validierten Karten`
+                ? `gewinnt mit ${winner.cards} Karten, davon ${winner.validated ?? 0} validiert`
                 : `gewinnt mit ${winner.cards} Karten`}
           </div>
         </div>
@@ -79,7 +79,7 @@ export default function EndScreen({ players, mode, onNewRound, onBackToSetup }: 
                 {isVinylUno
                   ? `${s.handSize ?? 0} in der Hand`
                   : isNameThatTune
-                    ? `${s.validated ?? 0}/${s.cards} validiert`
+                    ? `${s.cards} Karten · ${s.validated ?? 0} validiert`
                     : `${s.cards} Karten`}
               </span>
             </div>

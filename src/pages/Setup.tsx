@@ -21,7 +21,7 @@ const MODES: { id: GameMode; label: string; hint: string }[] = [
   {
     id: 'name-that-tune',
     label: 'Artist & Titel raten',
-    hint: 'Karten zählen erst mit Platzierung UND ≥2/3 (Jahr exakt, Titel/Artist tippfehlertolerant) als validiert. Andere dürfen falsche Platzierungen und schwache Tipps stehlen.',
+    hint: 'Braucht X Karten, davon Y validiert (Jahr exakt, Titel/Artist tippfehlertolerant). Andere dürfen falsche Platzierungen und schwache Tipps stehlen.',
   },
   {
     id: 'plattenboerse',
@@ -147,12 +147,46 @@ export default function Setup() {
               max={30}
               value={winN}
               onChange={(e) =>
-                setSettings({ winCondition: { type: 'cards', n: Number(e.target.value) } })
+                setSettings({
+                  winCondition: { type: 'cards', n: Number(e.target.value) },
+                  requiredMastered: Math.min(settings.requiredMastered, Number(e.target.value)),
+                })
               }
               className="w-20 rounded-lg bg-panel2 px-3 py-2 text-center"
             />
-            {settings.mode === 'name-that-tune' ? 'validierten Karten gewinnt' : 'Karten gewinnt'}
+            Karten gewinnt
           </div>
+
+          {settings.mode === 'name-that-tune' && (
+            <>
+              <div className="flex items-center gap-2 border-t border-white/10 pt-3">
+                Davon
+                <input
+                  type="number"
+                  min={1}
+                  max={winN}
+                  value={settings.requiredMastered}
+                  onChange={(e) => setSettings({ requiredMastered: Number(e.target.value) })}
+                  className="w-20 rounded-lg bg-panel2 px-3 py-2 text-center"
+                />
+                validiert (Jahr/Titel/Artist)
+              </div>
+              <div>
+                <span className="mb-1 block text-xs text-slate-400">Wann zählt eine Karte als validiert?</span>
+                <div className="flex gap-2">
+                  {[2, 3].map((n) => (
+                    <button
+                      key={n}
+                      className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${settings.masteryThreshold === n ? 'bg-accent text-black' : 'bg-panel2 text-slate-300'}`}
+                      onClick={() => setSettings({ masteryThreshold: n })}
+                    >
+                      {n === 2 ? '2 von 3 reichen' : 'alle 3 nötig'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </section>
       )}
 

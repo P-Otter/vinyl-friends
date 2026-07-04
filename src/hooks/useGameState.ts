@@ -47,6 +47,8 @@ export function defaultSettings(): GameSettings {
     snippetMode: { enabled: false, lengthSec: 30 },
     randomOffset: true,
     startingHandSize: 7,
+    requiredMastered: 3,
+    masteryThreshold: 2,
   };
 }
 
@@ -344,7 +346,7 @@ export const useGameState = create<GameStore>()(
         const state = get();
         const result = state.lastResult;
         if (!result || result.tuneRoundFinished || !result.bonus) return;
-        const { ownerId, bonusWinnerId } = resolveTuneRound(result);
+        const { ownerId, bonusWinnerId } = resolveTuneRound(result, state.settings.masteryThreshold);
         const validated = bonusWinnerId === ownerId;
 
         set({
@@ -416,13 +418,16 @@ export const useGameState = create<GameStore>()(
         const state = get();
         const { mode } = state.settings;
         // Gewinn-Check: Standardmodi = Karten-Race, "vinyl-uno" = Rennen auf leere Hand,
-        // "name-that-tune" = validierte (nicht nur platzierte) Karten zählen.
+        // "name-that-tune" = braucht win.n TOTAL Karten UND mindestens requiredMastered
+        // davon validiert (zwei unabhängige Zahlen, wie in der iOS-App).
         const win = state.settings.winCondition;
         const reachedCards =
           mode !== 'vinyl-uno' &&
           win.type === 'cards' &&
           state.players.some((p) =>
-            mode === 'name-that-tune' ? validatedCount(p) >= win.n : p.cards.length >= win.n,
+            mode === 'name-that-tune'
+              ? p.cards.length >= win.n && validatedCount(p) >= state.settings.requiredMastered
+              : p.cards.length >= win.n,
           );
         const handEmpty = mode === 'vinyl-uno' && state.players.some((p) => (p.handSize ?? 0) <= 0);
         const timeUp =

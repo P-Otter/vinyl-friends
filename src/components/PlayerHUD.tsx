@@ -8,10 +8,18 @@ type Props = {
   currentPlayerId: string;
   targetCards: number;
   isVinylUno?: boolean; // Hand-Countdown statt Karten-Ziel anzeigen
-  isNameThatTune?: boolean; // validierte statt platzierte Kartenzahl anzeigen
+  isNameThatTune?: boolean; // zusätzlich validierte Kartenzahl anzeigen
+  requiredMastered?: number; // nur "name-that-tune": Ziel für validierte Karten
 };
 
-function PlayerHUD({ players, currentPlayerId, targetCards, isVinylUno, isNameThatTune }: Props) {
+function PlayerHUD({
+  players,
+  currentPlayerId,
+  targetCards,
+  isVinylUno,
+  isNameThatTune,
+  requiredMastered,
+}: Props) {
   const t = useTheme();
   return (
     <div className="flex flex-wrap gap-3">
@@ -33,12 +41,13 @@ function PlayerHUD({ players, currentPlayerId, targetCards, isVinylUno, isNameTh
             <span>{p.name}</span>
             {vinylCall && <span style={{ color: t.highlight }}>🎉 Vinyl!</span>}
             <span style={{ color: t.textMuted }}>
-              {isVinylUno
-                ? `${p.handSize ?? 0} auf der Hand`
-                : isNameThatTune
-                  ? `${validatedCount(p)}/${targetCards} validiert`
-                  : `${p.cards.length}/${targetCards}`}
+              {isVinylUno ? `${p.handSize ?? 0} auf der Hand` : `${p.cards.length}/${targetCards}`}
             </span>
+            {isNameThatTune && (
+              <span style={{ color: t.highlight }}>
+                · {validatedCount(p)}/{requiredMastered ?? targetCards} validiert
+              </span>
+            )}
             {isNameThatTune && bank > 0 && <span style={{ color: t.highlight }}>🎁{bank}</span>}
           </div>
         );

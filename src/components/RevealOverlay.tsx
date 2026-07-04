@@ -11,6 +11,7 @@ type Props = {
   onNext: () => void;
   mode: GameMode;
   players: Player[];
+  masteryThreshold: number;
   onAwardFaveGuess: (playerId: string) => void;
   onSubmitTuneGuess: (yearGuess: number | null, titleGuess: string, artistGuess: string) => void;
   onSubmitTuneSteal: (
@@ -36,6 +37,7 @@ export default function RevealOverlay({
   onNext,
   mode,
   players,
+  masteryThreshold,
   onAwardFaveGuess,
   onSubmitTuneGuess,
   onSubmitTuneSteal,
@@ -117,6 +119,7 @@ export default function RevealOverlay({
               <TuneRevealFlow
                 result={result}
                 players={players}
+                masteryThreshold={masteryThreshold}
                 onSubmitOwn={onSubmitTuneGuess}
                 onSubmitSteal={onSubmitTuneSteal}
                 onFinish={onFinishTuneRound}
@@ -136,7 +139,7 @@ export default function RevealOverlay({
 
           {!tunePending && (
             <button className="btn-primary mt-6 w-full" onClick={onNext}>
-              Nächste*r Spieler*in →
+              Weiter →
             </button>
           )}
         </div>

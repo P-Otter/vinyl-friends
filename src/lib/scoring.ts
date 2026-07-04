@@ -51,9 +51,13 @@ export function validatedCount(player: Player): number {
  * hat die Platzierung korrekt nachgeholt, während die aktive Person daneben
  * lag (erster Treffer gewinnt). Bonus-Gewinner ist, wer die meisten der 3
  * Felder richtig hat (aktiver Tipp zählt mit) — ein bestehender Halter wird
- * nur durch ECHT mehr richtige Felder verdrängt, ab 2/3 gilt als validiert.
+ * nur durch ECHT mehr richtige Felder verdrängt, ab `masteryThreshold` gilt
+ * als validiert (konfigurierbar: 2 von 3 oder alle 3 nötig).
  */
-export function resolveTuneRound(result: PlacementResult): {
+export function resolveTuneRound(
+  result: PlacementResult,
+  masteryThreshold: number,
+): {
   ownerId: string;
   bonusWinnerId: string | null;
 } {
@@ -64,13 +68,13 @@ export function resolveTuneRound(result: PlacementResult): {
   }
 
   let bonusWinnerId: string | null = null;
-  let bestCount = 1; // < 2 validiert nie, also ist 1 die "nichts gewonnen"-Schwelle
+  let bestCount = masteryThreshold - 1; // darunter validiert nie, also die "nichts gewonnen"-Schwelle
   const candidates = [
     { id: result.playerId, count: result.bonus?.correctCount ?? 0 },
     ...(result.steals ?? []).map((s) => ({ id: s.byPlayerId, count: s.guess.correctCount })),
   ];
   for (const c of candidates) {
-    if (c.count >= 2 && c.count > bestCount) {
+    if (c.count >= masteryThreshold && c.count > bestCount) {
       bestCount = c.count;
       bonusWinnerId = c.id;
     }

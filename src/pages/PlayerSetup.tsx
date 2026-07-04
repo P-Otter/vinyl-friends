@@ -26,6 +26,7 @@ export default function PlayerSetup() {
   const isPoolMode = settings.musicSource === 'preview';
   const [building, setBuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const targetCardsForMastery = settings.winCondition.type === 'cards' ? settings.winCondition.n : 10;
 
   // Lazy-Init: beim ersten Besuch zwei leere Spieler anlegen.
   useEffect(() => {
@@ -183,7 +184,7 @@ export default function PlayerSetup() {
             {
               id: 'name-that-tune' as const,
               label: 'Artist & Titel raten',
-              hint: 'Karten zählen erst mit Platzierung UND ≥2/3 (Jahr exakt, Titel/Artist tippfehlertolerant) als validiert. Andere dürfen falsche Platzierungen und schwache Tipps stehlen.',
+              hint: 'Braucht X Karten, davon Y validiert (Jahr exakt, Titel/Artist tippfehlertolerant). Andere dürfen falsche Platzierungen und schwache Tipps stehlen.',
             },
             {
               id: 'plattenboerse' as const,
@@ -216,6 +217,52 @@ export default function PlayerSetup() {
             </label>
           );
         })}
+        {settings.mode === 'name-that-tune' && (
+          <>
+            <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm" style={{ background: t.background }}>
+              <span>Davon validiert</span>
+              <div className="flex items-center gap-3">
+                <button
+                  className="btn-ghost px-3 py-1"
+                  onClick={() => setSettings({ requiredMastered: Math.max(1, settings.requiredMastered - 1) })}
+                >
+                  −
+                </button>
+                <span className="w-6 text-center font-mono font-bold">{settings.requiredMastered}</span>
+                <button
+                  className="btn-ghost px-3 py-1"
+                  onClick={() =>
+                    setSettings({
+                      requiredMastered: Math.min(targetCardsForMastery, settings.requiredMastered + 1),
+                    })
+                  }
+                >
+                  +
+                </button>
+              </div>
+            </div>
+            <div>
+              <span className="mb-1 block text-xs" style={{ color: t.textMuted }}>
+                Wann zählt eine Karte als validiert?
+              </span>
+              <div className="flex gap-2">
+                {[2, 3].map((n) => (
+                  <button
+                    key={n}
+                    className="flex-1 rounded-lg px-3 py-2 text-sm font-semibold"
+                    style={{
+                      background: settings.masteryThreshold === n ? t.highlight : t.background,
+                      color: settings.masteryThreshold === n ? t.onAccent : t.textMuted,
+                    }}
+                    onClick={() => setSettings({ masteryThreshold: n })}
+                  >
+                    {n === 2 ? '2 von 3 reichen' : 'alle 3 nötig'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
         {settings.mode === 'vinyl-uno' && (
           <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm" style={{ background: t.background }}>
             <span>Starthand-Größe</span>

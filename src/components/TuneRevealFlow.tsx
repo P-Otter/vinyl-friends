@@ -11,6 +11,7 @@ import Timeline from './Timeline';
 type Props = {
   result: PlacementResult;
   players: Player[];
+  masteryThreshold: number;
   onSubmitOwn: (yearGuess: number | null, titleGuess: string, artistGuess: string) => void;
   onSubmitSteal: (
     byPlayerId: string,
@@ -22,23 +23,38 @@ type Props = {
   onFinish: () => void;
 };
 
-export default function TuneRevealFlow({ result, players, onSubmitOwn, onSubmitSteal, onFinish }: Props) {
+export default function TuneRevealFlow({
+  result,
+  players,
+  masteryThreshold,
+  onSubmitOwn,
+  onSubmitSteal,
+  onFinish,
+}: Props) {
   if (!result.bonus) {
-    return <TuneFields onSubmit={onSubmitOwn} />;
+    return <TuneFields masteryThreshold={masteryThreshold} onSubmit={onSubmitOwn} />;
   }
   if (!result.tuneRoundFinished) {
     return (
-      <StealPhase result={result} players={players} onSubmitSteal={onSubmitSteal} onFinish={onFinish} />
+      <StealPhase
+        result={result}
+        players={players}
+        masteryThreshold={masteryThreshold}
+        onSubmitSteal={onSubmitSteal}
+        onFinish={onFinish}
+      />
     );
   }
-  return <TuneBreakdown result={result} players={players} />;
+  return <TuneBreakdown result={result} players={players} masteryThreshold={masteryThreshold} />;
 }
 
 /** Gemeinsames Jahr/Titel/Artist-Formular — für den eigenen Tipp UND jeden Steal-Versuch.
  *  Jahr muss exakt stimmen (Wissens-Check), Titel/Artist tolerieren Tippfehler. */
 function TuneFields({
+  masteryThreshold,
   onSubmit,
 }: {
+  masteryThreshold: number;
   onSubmit: (yearGuess: number | null, titleGuess: string, artistGuess: string) => void;
 }) {
   const t = useTheme();
@@ -53,6 +69,9 @@ function TuneFields({
     <div className="space-y-2 text-left">
       <p className="text-xs font-black uppercase tracking-widest" style={{ color: t.textMuted }}>
         Jahr, Titel &amp; Artist erraten
+      </p>
+      <p className="text-[11px]" style={{ color: t.textMuted }}>
+        Mindestens {masteryThreshold} von 3 richtig = validiert.
       </p>
       <input
         value={year}
@@ -103,11 +122,13 @@ function TuneFields({
 function StealPhase({
   result,
   players,
+  masteryThreshold,
   onSubmitSteal,
   onFinish,
 }: {
   result: PlacementResult;
   players: Player[];
+  masteryThreshold: number;
   onSubmitSteal: Props['onSubmitSteal'];
   onFinish: () => void;
 }) {
@@ -122,6 +143,7 @@ function StealPhase({
     return (
       <StealAttemptForm
         stealer={stealer}
+        masteryThreshold={masteryThreshold}
         onCancel={() => setStealerId(null)}
         onSubmit={(gap, year, title, artist) => {
           onSubmitSteal(stealerId, gap, year, title, artist);
@@ -179,10 +201,12 @@ function StealPhase({
 
 function StealAttemptForm({
   stealer,
+  masteryThreshold,
   onCancel,
   onSubmit,
 }: {
   stealer: Player;
+  masteryThreshold: number;
   onCancel: () => void;
   onSubmit: (gap: number, year: number | null, title: string, artist: string) => void;
 }) {
@@ -209,7 +233,10 @@ function StealAttemptForm({
           Erst eine Position in der Timeline wählen.
         </p>
       ) : (
-        <TuneFields onSubmit={(year, title, artist) => onSubmit(gap, year, title, artist)} />
+        <TuneFields
+          masteryThreshold={masteryThreshold}
+          onSubmit={(year, title, artist) => onSubmit(gap, year, title, artist)}
+        />
       )}
     </div>
   );
@@ -240,9 +267,17 @@ function AttemptCard({ name, guess, t }: { name: string; guess: BonusGuessResult
   );
 }
 
-function TuneBreakdown({ result, players }: { result: PlacementResult; players: Player[] }) {
+function TuneBreakdown({
+  result,
+  players,
+  masteryThreshold,
+}: {
+  result: PlacementResult;
+  players: Player[];
+  masteryThreshold: number;
+}) {
   const t = useTheme();
-  const { bonusWinnerId } = resolveTuneRound(result);
+  const { bonusWinnerId } = resolveTuneRound(result, masteryThreshold);
   const nameOf = (id: string) => players.find((p) => p.id === id)?.name ?? '—';
   const stolen = result.finalOwnerId && result.finalOwnerId !== result.playerId;
 

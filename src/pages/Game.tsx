@@ -39,6 +39,10 @@ export default function Game() {
   // (gleiche Logik wie End.tsx beim regulären Spielende).
   const setupPath = settings.musicSource === 'preview' ? '/pool' : '/setup';
   const [confirmingExit, setConfirmingExit] = useState(false);
+  // Zweistufiges Reveal: erst das eigene (aktualisierte) Spielfeld wieder sehen,
+  // dann explizit "Nächstes Team" drücken — ein Klick schließt nicht mehr beides
+  // auf einmal. Reine Anzeige-Präferenz für diese eine Runde, nicht persistiert.
+  const [revealSeen, setRevealSeen] = useState(false);
   const isPlattenboerse = settings.mode === 'plattenboerse';
   const isVinylUno = settings.mode === 'vinyl-uno';
   const decades = useMemo(() => (isPlattenboerse ? decadesInQueue(queue) : []), [isPlattenboerse, queue]);
@@ -62,10 +66,6 @@ export default function Game() {
 
   const track = queue[currentTrackIndex];
   const activePlayer = players[currentPlayerIdx];
-  const sortedCards = useMemo(
-    () => (activePlayer ? sortByYear(activePlayer.cards) : []),
-    [activePlayer],
-  );
   // "Artist & Titel raten": die gerade platzierte Karte steht schon in der Timeline
   // (Farbe/Jahr korrekt), aber der Songname muss versteckt bleiben, bis der
   // komplette Rate-/Steal-Ablauf abgeschlossen ist — sonst verrät die Timeline
@@ -97,6 +97,9 @@ export default function Game() {
   }, [phase, navigate]);
 
   const targetCards = settings.winCondition.type === 'cards' ? settings.winCondition.n : 10;
+  // Sobald aufgedeckt wird, ist die Runde inhaltlich vorbei — kein Spielfeld
+  // (auch das der aktiven Person) darf dann noch anklickbar sein.
+  const canPlaceNow = started && phase === 'playing';
 
   // Generationszähler gegen das Skip-Race: startet jemand einen Song und
   // skippt, während die Hörprobe noch lädt, darf das verspätete Ergebnis
@@ -191,7 +194,7 @@ export default function Game() {
             className="underline disabled:opacity-40"
             style={{ color: t.textMuted }}
             onClick={skipTrack}
-            disabled={busy}
+            disabled={busy || phase !== 'playing'}
           >
             Skip
           </button>
@@ -240,29 +243,59 @@ export default function Game() {
 
       <section className="panel space-y-4">
         <div className="flex items-center justify-between">
-          <label className="field-label mb-0">Deine Timeline — wohin gehört der Song?</label>
+          <label className="field-label mb-0">Spielfelder — wohin gehört der Song?</label>
           <span className="text-xs" style={{ color: t.textMuted }}>
             älter ← → neuer (Jahre erst beim Reveal)
           </span>
         </div>
-        <Timeline
-          cards={sortedCards}
-          selectedGap={selectedGap}
-          onSelectGap={setSelectedGap}
-          disabled={!started}
-          maskedCardId={tuneGuessPending ? lastResult?.track.id : undefined}
-        />
-        <button
-          className="btn-primary w-full"
-          disabled={!started || selectedGap === null}
-          onClick={confirmPlacement}
-        >
-          Platzieren &amp; aufdecken
-        </button>
-        {!started && (
-          <p className="text-xs" style={{ color: t.textMuted }}>
-            Erst „Song starten" — dann eine Position wählen.
-          </p>
+
+        {players.map((p) => {
+          const isActive = p.id === activePlayer.id;
+          return (
+            <div key={p.id} className={`space-y-1.5 ${isActive ? '' : 'opacity-45 grayscale'}`}>
+              <div
+                className="flex items-center gap-1.5 text-xs font-black"
+                style={{ color: isActive ? p.color : t.textMuted }}
+              >
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
+                {p.name}
+              </div>
+              <Timeline
+                cards={sortByYear(p.cards)}
+                selectedGap={isActive ? selectedGap : null}
+                onSelectGap={isActive ? setSelectedGap : () => {}}
+                disabled={!isActive || !canPlaceNow}
+                maskedCardId={isActive && tuneGuessPending ? lastResult?.track.id : undefined}
+              />
+            </div>
+          );
+        })}
+
+        {phase === 'reveal' && revealSeen ? (
+          <button
+            className="btn-primary w-full"
+            onClick={() => {
+              setRevealSeen(false);
+              nextPlayer();
+            }}
+          >
+            Nächstes Team →
+          </button>
+        ) : (
+          <>
+            <button
+              className="btn-primary w-full"
+              disabled={!canPlaceNow || selectedGap === null}
+              onClick={confirmPlacement}
+            >
+              Platzieren &amp; aufdecken
+            </button>
+            {!started && (
+              <p className="text-xs" style={{ color: t.textMuted }}>
+                Erst „Song starten" — dann eine Position wählen.
+              </p>
+            )}
+          </>
         )}
       </section>
 
@@ -274,6 +307,7 @@ export default function Game() {
           targetCards={targetCards}
           isVinylUno={isVinylUno}
           isNameThatTune={settings.mode === 'name-that-tune'}
+          requiredMastered={settings.requiredMastered}
         />
       </section>
 
@@ -281,12 +315,13 @@ export default function Game() {
         <MarketPanel players={players} decades={decades} onTrade={tradeTokens} onRedeem={redeemSet} />
       )}
 
-      {phase === 'reveal' && lastResult && (
+      {phase === 'reveal' && lastResult && !revealSeen && (
         <RevealOverlay
           result={lastResult}
-          onNext={nextPlayer}
+          onNext={() => setRevealSeen(true)}
           mode={settings.mode}
           players={players}
+          masteryThreshold={settings.masteryThreshold}
           onAwardFaveGuess={awardFaveGuess}
           onSubmitTuneGuess={submitTuneGuess}
           onSubmitTuneSteal={submitTuneSteal}
