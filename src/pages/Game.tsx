@@ -27,6 +27,7 @@ export default function Game() {
     placeCard,
     nextPlayer,
     skipTrack,
+    resetGame,
     awardFaveGuess,
     submitTuneGuess,
     submitTuneSteal,
@@ -34,6 +35,10 @@ export default function Game() {
     tradeTokens,
     redeemSet,
   } = useGameState();
+  // Im Ohne-Spotify-Modus führt "Verlassen" zurück zum Pool, nicht zum Spotify-Setup
+  // (gleiche Logik wie End.tsx beim regulären Spielende).
+  const setupPath = settings.musicSource === 'preview' ? '/pool' : '/setup';
+  const [confirmingExit, setConfirmingExit] = useState(false);
   const isPlattenboerse = settings.mode === 'plattenboerse';
   const isVinylUno = settings.mode === 'vinyl-uno';
   const decades = useMemo(() => (isPlattenboerse ? decadesInQueue(queue) : []), [isPlattenboerse, queue]);
@@ -181,14 +186,19 @@ export default function Game() {
           <span className="h-3 w-3 rounded-full" style={{ backgroundColor: activePlayer.color }} />
           {activePlayer.name} ist dran
         </span>
-        <button
-          className="underline disabled:opacity-40"
-          style={{ color: t.textMuted }}
-          onClick={skipTrack}
-          disabled={busy}
-        >
-          Skip
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            className="underline disabled:opacity-40"
+            style={{ color: t.textMuted }}
+            onClick={skipTrack}
+            disabled={busy}
+          >
+            Skip
+          </button>
+          <button className="underline" style={{ color: t.bad }} onClick={() => setConfirmingExit(true)}>
+            Verlassen
+          </button>
+        </div>
       </header>
 
       {!playerReady && (
@@ -283,6 +293,35 @@ export default function Game() {
           onSubmitTuneSteal={submitTuneSteal}
           onFinishTuneRound={finishTuneRound}
         />
+      )}
+
+      {confirmingExit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div
+            className="w-full max-w-sm space-y-4 rounded-3xl p-6 text-center"
+            style={{ background: t.surface, border: `${t.strokeWidth}px solid ${t.surfaceStroke}`, boxShadow: 'var(--t-shadow)' }}
+          >
+            <p className="text-lg font-black">Spiel wirklich verlassen?</p>
+            <p className="text-sm" style={{ color: t.textMuted }}>
+              Der aktuelle Fortschritt geht verloren.
+            </p>
+            <div className="flex gap-3">
+              <button className="btn-ghost flex-1" onClick={() => setConfirmingExit(false)}>
+                Abbrechen
+              </button>
+              <button
+                className="flex-1 rounded-xl px-4 py-3 font-bold"
+                style={{ background: `${t.bad}26`, color: t.bad, border: `${t.strokeWidth}px solid ${t.bad}` }}
+                onClick={() => {
+                  resetGame();
+                  navigate(setupPath);
+                }}
+              >
+                Ja, verlassen
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

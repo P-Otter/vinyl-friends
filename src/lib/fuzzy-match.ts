@@ -47,8 +47,11 @@ export function fuzzyMatches(a: string, b: string, tolerance = 0.2): boolean {
   return dist <= Math.max(1, Math.floor(Math.max(na.length, nb.length) * tolerance));
 }
 
-/** Artist-Vergleich: erster (Haupt-)Künstler reicht — "feat."-Anhänge egal. */
+/** Artist-Vergleich: erster (Haupt-)Künstler reicht — "feat."-Anhänge egal.
+ *  WICHTIG: auf dem ROHEN String splitten, nicht dem normalisierten — normalize()
+ *  ersetzt Kommas bereits durch Leerzeichen, danach hätte der Split nichts mehr
+ *  zu trennen und "fugees, ms. lauryn hill, …" bliebe als Ganzes stehen. */
 export function fuzzyMatchesArtist(a: string, b: string, tolerance = 0.2): boolean {
-  const first = (s: string) => normalize(s).split(/,|feat|&|x /)[0]?.trim() ?? '';
+  const first = (s: string) => s.split(/,|&|\bfeat\b|\bx\b/i)[0]?.trim() ?? '';
   return fuzzyMatches(first(a), first(b), tolerance) || fuzzyMatches(a, b, tolerance);
 }
