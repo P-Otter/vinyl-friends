@@ -287,7 +287,6 @@ export default function Game() {
           onNext={nextPlayer}
           mode={settings.mode}
           players={players}
-          yearTolerance={settings.yearTolerance}
           onAwardFaveGuess={awardFaveGuess}
           onSubmitTuneGuess={submitTuneGuess}
           onSubmitTuneSteal={submitTuneSteal}

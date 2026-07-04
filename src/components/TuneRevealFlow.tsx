@@ -11,7 +11,6 @@ import Timeline from './Timeline';
 type Props = {
   result: PlacementResult;
   players: Player[];
-  yearTolerance: number;
   onSubmitOwn: (yearGuess: number | null, titleGuess: string, artistGuess: string) => void;
   onSubmitSteal: (
     byPlayerId: string,
@@ -23,37 +22,23 @@ type Props = {
   onFinish: () => void;
 };
 
-export default function TuneRevealFlow({
-  result,
-  players,
-  yearTolerance,
-  onSubmitOwn,
-  onSubmitSteal,
-  onFinish,
-}: Props) {
+export default function TuneRevealFlow({ result, players, onSubmitOwn, onSubmitSteal, onFinish }: Props) {
   if (!result.bonus) {
-    return <TuneFields yearTolerance={yearTolerance} onSubmit={onSubmitOwn} />;
+    return <TuneFields onSubmit={onSubmitOwn} />;
   }
   if (!result.tuneRoundFinished) {
     return (
-      <StealPhase
-        result={result}
-        players={players}
-        yearTolerance={yearTolerance}
-        onSubmitSteal={onSubmitSteal}
-        onFinish={onFinish}
-      />
+      <StealPhase result={result} players={players} onSubmitSteal={onSubmitSteal} onFinish={onFinish} />
     );
   }
   return <TuneBreakdown result={result} players={players} />;
 }
 
-/** Gemeinsames Jahr/Titel/Artist-Formular — für den eigenen Tipp UND jeden Steal-Versuch. */
+/** Gemeinsames Jahr/Titel/Artist-Formular — für den eigenen Tipp UND jeden Steal-Versuch.
+ *  Jahr muss exakt stimmen (Wissens-Check), Titel/Artist tolerieren Tippfehler. */
 function TuneFields({
-  yearTolerance,
   onSubmit,
 }: {
-  yearTolerance: number;
   onSubmit: (yearGuess: number | null, titleGuess: string, artistGuess: string) => void;
 }) {
   const t = useTheme();
@@ -72,7 +57,7 @@ function TuneFields({
       <input
         value={year}
         onChange={(e) => setYear(e.target.value)}
-        placeholder={`Jahr (±${yearTolerance})`}
+        placeholder="Jahr (exakt)"
         inputMode="numeric"
         className="w-full rounded-lg px-3 py-2 text-sm outline-none"
         style={fieldStyle}
@@ -108,6 +93,9 @@ function TuneFields({
           Mindestens ein Feld ausfüllen — sonst „Weiß nicht" tippen.
         </p>
       )}
+      <p className="text-[11px]" style={{ color: t.textMuted }}>
+        Jahr muss exakt stimmen — bei Titel &amp; Artist zählen Tippfehler nicht.
+      </p>
     </div>
   );
 }
@@ -115,13 +103,11 @@ function TuneFields({
 function StealPhase({
   result,
   players,
-  yearTolerance,
   onSubmitSteal,
   onFinish,
 }: {
   result: PlacementResult;
   players: Player[];
-  yearTolerance: number;
   onSubmitSteal: Props['onSubmitSteal'];
   onFinish: () => void;
 }) {
@@ -136,7 +122,6 @@ function StealPhase({
     return (
       <StealAttemptForm
         stealer={stealer}
-        yearTolerance={yearTolerance}
         onCancel={() => setStealerId(null)}
         onSubmit={(gap, year, title, artist) => {
           onSubmitSteal(stealerId, gap, year, title, artist);
@@ -194,12 +179,10 @@ function StealPhase({
 
 function StealAttemptForm({
   stealer,
-  yearTolerance,
   onCancel,
   onSubmit,
 }: {
   stealer: Player;
-  yearTolerance: number;
   onCancel: () => void;
   onSubmit: (gap: number, year: number | null, title: string, artist: string) => void;
 }) {
@@ -226,10 +209,7 @@ function StealAttemptForm({
           Erst eine Position in der Timeline wählen.
         </p>
       ) : (
-        <TuneFields
-          yearTolerance={yearTolerance}
-          onSubmit={(year, title, artist) => onSubmit(gap, year, title, artist)}
-        />
+        <TuneFields onSubmit={(year, title, artist) => onSubmit(gap, year, title, artist)} />
       )}
     </div>
   );

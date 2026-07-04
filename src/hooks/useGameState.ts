@@ -13,7 +13,6 @@ import type {
 import {
   insertCard,
   isPlacementCorrect,
-  isYearGuessCorrect,
   resolveTuneRound,
   sortByYear,
   validatedCount,
@@ -133,15 +132,16 @@ function rollVinylEvent(
   };
 }
 
-/** "Artist & Titel raten": ein Jahr/Titel/Artist-Tipp gegen die echte Karte bewertet. */
+/** "Artist & Titel raten": ein Jahr/Titel/Artist-Tipp gegen die echte Karte bewertet.
+ *  Jahr muss EXAKT stimmen (keine Toleranz — das ist ein Wissens-Check, kein
+ *  Platzierungs-Schätzwert), Titel/Artist bleiben tippfehlertolerant (Fuzzy-Match). */
 function gradeTuneGuess(
   result: PlacementResult,
-  yearTolerance: number,
   yearGuess: number | null,
   titleGuess: string,
   artistGuess: string,
 ): BonusGuessResult {
-  const yearCorrect = yearGuess !== null && isYearGuessCorrect(result.track, yearGuess, yearTolerance);
+  const yearCorrect = yearGuess !== null && yearGuess === result.track.releaseYear;
   const titleCorrect = fuzzyMatches(titleGuess, result.track.name);
   const artistCorrect = fuzzyMatchesArtist(artistGuess, result.track.artist);
   const correctCount = [yearCorrect, titleCorrect, artistCorrect].filter(Boolean).length;
@@ -321,7 +321,7 @@ export const useGameState = create<GameStore>()(
         const state = get();
         const result = state.lastResult;
         if (!result || result.bonus) return; // schon abgegeben
-        set({ lastResult: { ...result, bonus: gradeTuneGuess(result, state.settings.yearTolerance, yearGuess, titleGuess, artistGuess) } });
+        set({ lastResult: { ...result, bonus: gradeTuneGuess(result, yearGuess, titleGuess, artistGuess) } });
       },
 
       submitTuneSteal: (byPlayerId, placementGuessIndex, yearGuess, titleGuess, artistGuess) => {
@@ -335,7 +335,7 @@ export const useGameState = create<GameStore>()(
           byPlayerId,
           placementGuessIndex,
           placementCorrect,
-          guess: gradeTuneGuess(result, state.settings.yearTolerance, yearGuess, titleGuess, artistGuess),
+          guess: gradeTuneGuess(result, yearGuess, titleGuess, artistGuess),
         };
         set({ lastResult: { ...result, steals: [...(result.steals ?? []), attempt] } });
       },

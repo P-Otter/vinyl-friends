@@ -11,7 +11,6 @@ type Props = {
   onNext: () => void;
   mode: GameMode;
   players: Player[];
-  yearTolerance: number;
   onAwardFaveGuess: (playerId: string) => void;
   onSubmitTuneGuess: (yearGuess: number | null, titleGuess: string, artistGuess: string) => void;
   onSubmitTuneSteal: (
@@ -37,7 +36,6 @@ export default function RevealOverlay({
   onNext,
   mode,
   players,
-  yearTolerance,
   onAwardFaveGuess,
   onSubmitTuneGuess,
   onSubmitTuneSteal,
@@ -119,7 +117,6 @@ export default function RevealOverlay({
               <TuneRevealFlow
                 result={result}
                 players={players}
-                yearTolerance={yearTolerance}
                 onSubmitOwn={onSubmitTuneGuess}
                 onSubmitSteal={onSubmitTuneSteal}
                 onFinish={onFinishTuneRound}

@@ -21,7 +21,7 @@ const MODES: { id: GameMode; label: string; hint: string }[] = [
   {
     id: 'name-that-tune',
     label: 'Artist & Titel raten',
-    hint: 'Karten zählen erst mit Platzierung UND ≥2/3 (Jahr/Titel/Artist) als validiert. Andere dürfen falsche Platzierungen und schwache Tipps stehlen.',
+    hint: 'Karten zählen erst mit Platzierung UND ≥2/3 (Jahr exakt, Titel/Artist tippfehlertolerant) als validiert. Andere dürfen falsche Platzierungen und schwache Tipps stehlen.',
   },
   {
     id: 'plattenboerse',

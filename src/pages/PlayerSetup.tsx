@@ -183,7 +183,7 @@ export default function PlayerSetup() {
             {
               id: 'name-that-tune' as const,
               label: 'Artist & Titel raten',
-              hint: 'Karten zählen erst mit Platzierung UND ≥2/3 (Jahr/Titel/Artist) als validiert. Andere dürfen falsche Platzierungen und schwache Tipps stehlen.',
+              hint: 'Karten zählen erst mit Platzierung UND ≥2/3 (Jahr exakt, Titel/Artist tippfehlertolerant) als validiert. Andere dürfen falsche Platzierungen und schwache Tipps stehlen.',
             },
             {
               id: 'plattenboerse' as const,
