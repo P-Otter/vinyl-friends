@@ -23,6 +23,16 @@ const MODES: { id: GameMode; label: string; hint: string }[] = [
     label: 'Artist & Titel raten',
     hint: 'Nach richtiger Platzierung Titel & Künstler erraten — optional mit Risiko-Wette.',
   },
+  {
+    id: 'plattenboerse',
+    label: 'Plattenbörse 📀',
+    hint: 'Catan-inspiriert: jeder Treffer bringt eine Dekaden-Marke. Marken mit anderen tauschen, volle Sätze gegen Bonuspunkte einlösen.',
+  },
+  {
+    id: 'vinyl-uno',
+    label: 'Vinyl! 🔄',
+    hint: 'UNO-inspiriert: alle starten mit einer Hand voll Songs. Richtig = Karte weg, falsch = Karte dazu. Wer zuerst leer ist, gewinnt — plus Zufalls-Ereignisse.',
+  },
 ];
 
 export default function Setup() {
@@ -126,23 +136,41 @@ export default function Setup() {
         )}
       </section>
 
-      <section className="panel space-y-3">
-        <label className="field-label">Win-Condition</label>
-        <div className="flex items-center gap-2">
-          Erste*r mit
-          <input
-            type="number"
-            min={3}
-            max={30}
-            value={winN}
-            onChange={(e) =>
-              setSettings({ winCondition: { type: 'cards', n: Number(e.target.value) } })
-            }
-            className="w-20 rounded-lg bg-panel2 px-3 py-2 text-center"
-          />
-          Karten gewinnt
-        </div>
-      </section>
+      {settings.mode === 'vinyl-uno' ? (
+        <section className="panel space-y-3">
+          <label className="field-label">Starthand-Größe</label>
+          <div className="flex items-center gap-2">
+            Jede*r startet mit
+            <input
+              type="number"
+              min={4}
+              max={12}
+              value={settings.startingHandSize}
+              onChange={(e) => setSettings({ startingHandSize: Number(e.target.value) })}
+              className="w-20 rounded-lg bg-panel2 px-3 py-2 text-center"
+            />
+            Songs auf der Hand — wer zuerst leer ist, gewinnt.
+          </div>
+        </section>
+      ) : (
+        <section className="panel space-y-3">
+          <label className="field-label">Win-Condition</label>
+          <div className="flex items-center gap-2">
+            Erste*r mit
+            <input
+              type="number"
+              min={3}
+              max={30}
+              value={winN}
+              onChange={(e) =>
+                setSettings({ winCondition: { type: 'cards', n: Number(e.target.value) } })
+              }
+              className="w-20 rounded-lg bg-panel2 px-3 py-2 text-center"
+            />
+            Karten gewinnt
+          </div>
+        </section>
+      )}
 
       <section className="panel">
         <button

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGameState } from '../hooks/useGameState';
+import { useGameState, decadesInQueue } from '../hooks/useGameState';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
 import { usePreviewPlayer } from '../hooks/usePreviewPlayer';
 import { useTheme } from '../hooks/useTheme';
@@ -10,6 +10,7 @@ import Timeline from '../components/Timeline';
 import PlayControls from '../components/PlayControls';
 import PlayerHUD from '../components/PlayerHUD';
 import RevealOverlay from '../components/RevealOverlay';
+import MarketPanel from '../components/MarketPanel';
 
 export default function Game() {
   const navigate = useNavigate();
@@ -28,7 +29,12 @@ export default function Game() {
     skipTrack,
     awardFaveGuess,
     submitTuneGuess,
+    tradeTokens,
+    redeemSet,
   } = useGameState();
+  const isPlattenboerse = settings.mode === 'plattenboerse';
+  const isVinylUno = settings.mode === 'vinyl-uno';
+  const decades = useMemo(() => (isPlattenboerse ? decadesInQueue(queue) : []), [isPlattenboerse, queue]);
 
   // Flüssige Fortschrittsanzeige (500-ms-Ticker). Auf langsamen Geräten abschaltbar,
   // weil die häufigen Re-Renders das Audio des Web Playback SDK ruckeln lassen können.
@@ -247,8 +253,13 @@ export default function Game() {
           players={players}
           currentPlayerId={activePlayer.id}
           targetCards={targetCards}
+          isVinylUno={isVinylUno}
         />
       </section>
+
+      {isPlattenboerse && (
+        <MarketPanel players={players} decades={decades} onTrade={tradeTokens} onRedeem={redeemSet} />
+      )}
 
       {phase === 'reveal' && lastResult && (
         <RevealOverlay

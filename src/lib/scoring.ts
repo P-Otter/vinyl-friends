@@ -1,6 +1,6 @@
 // Scoring für den Klassik-Modus (relative Ordnung).
 // Siehe docs/game-design.md → Grundregeln + Edge-Case „Zwei Karten aus dem gleichen Jahr".
-import type { Player, Track } from '../types';
+import type { GameMode, Player, Track } from '../types';
 
 /** Karten chronologisch nach Jahr sortieren (stabil). */
 export function sortByYear(cards: Track[]): Track[] {
@@ -43,18 +43,26 @@ export type PlayerStats = {
   name: string;
   cards: number;
   accuracy: number; // 0..1
-  bonusPoints: number; // "Wessen Liebling?" / "Artist & Titel raten"
+  bonusPoints: number; // "Wessen Liebling?" / "Artist & Titel raten" / Plattenbörse-Sätze
+  handSize?: number; // nur "vinyl-uno"
 };
 
-export function ranking(players: Player[]): PlayerStats[] {
-  return players
-    .map((p) => ({
-      playerId: p.id,
-      name: p.name,
-      cards: p.cards.length,
-      accuracy: p.attempts > 0 ? p.hits / p.attempts : 0,
-      bonusPoints: p.bonusPoints ?? 0,
-    }))
-    // Kartenzahl bleibt die Sieg-Metrik; Bonuspunkte zählen nur als Tiebreaker.
-    .sort((a, b) => b.cards - a.cards || b.accuracy - a.accuracy || b.bonusPoints - a.bonusPoints);
+/** Rangliste — nach Modus wird unterschiedlich gewertet:
+ *  Standardmodi: meiste Karten gewinnt. "vinyl-uno" ist umgekehrt (Rennen auf
+ *  leere Hand) — kleinste Hand zuerst, Kartenzahl dort nur Tiebreaker-Info. */
+export function ranking(players: Player[], mode?: GameMode): PlayerStats[] {
+  const stats = players.map((p) => ({
+    playerId: p.id,
+    name: p.name,
+    cards: p.cards.length,
+    accuracy: p.attempts > 0 ? p.hits / p.attempts : 0,
+    bonusPoints: p.bonusPoints ?? 0,
+    handSize: p.handSize,
+  }));
+
+  if (mode === 'vinyl-uno') {
+    return stats.sort((a, b) => (a.handSize ?? Infinity) - (b.handSize ?? Infinity) || b.cards - a.cards);
+  }
+  // Kartenzahl bleibt die Sieg-Metrik; Bonuspunkte zählen nur als Tiebreaker.
+  return stats.sort((a, b) => b.cards - a.cards || b.accuracy - a.accuracy || b.bonusPoints - a.bonusPoints);
 }

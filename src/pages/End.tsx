@@ -17,6 +17,7 @@ export default function End() {
   return (
     <EndScreen
       players={players}
+      mode={settings.mode}
       onNewRound={() => {
         resetGame();
         navigate('/players');

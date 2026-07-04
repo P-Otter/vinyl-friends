@@ -4,6 +4,7 @@ import { useTheme } from '../hooks/useTheme';
 import Confetti from './theme/Confetti';
 import FaveGuessRow from './FaveGuessRow';
 import TuneGuessForm from './TuneGuessForm';
+import VinylEventBanner from './VinylEventBanner';
 
 type Props = {
   result: PlacementResult;
@@ -74,7 +75,13 @@ export default function RevealOverlay({
             className="mt-6 rounded-xl px-4 py-3 font-bold"
             style={{ background: `${stampColor}26`, color: stampColor }}
           >
-            {correct ? '✓ Richtig platziert! +1 Karte' : '✗ Falsch — keine Karte'}
+            {mode === 'vinyl-uno'
+              ? correct
+                ? '✓ Richtig! Eine Karte weniger auf der Hand'
+                : '✗ Falsch — eine Karte dazugezogen'
+              : correct
+                ? '✓ Richtig platziert! +1 Karte'
+                : '✗ Falsch — keine Karte'}
           </div>
 
           <div className="mt-3 text-xs" style={{ color: t.textMuted }}>
@@ -90,6 +97,16 @@ export default function RevealOverlay({
 
           {mode === 'name-that-tune' && correct && (
             <TuneGuessForm bonus={result.bonus} wagerEnabled={wagerEnabled} onSubmit={onSubmitTuneGuess} />
+          )}
+
+          {mode === 'plattenboerse' && result.decade !== undefined && (
+            <div className="mt-4 text-sm font-bold" style={{ color: t.highlight }}>
+              🎫 +1 {String(result.decade).slice(2)}er-Marke fürs Depot
+            </div>
+          )}
+
+          {mode === 'vinyl-uno' && result.vinylEvent && (
+            <VinylEventBanner event={result.vinylEvent} players={players} />
           )}
 
           <button className="btn-primary mt-6 w-full" onClick={onNext}>

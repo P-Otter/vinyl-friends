@@ -71,7 +71,15 @@ export default function PlayerSetup() {
       let queue: Track[];
       if (isPoolMode) {
         // Ohne-Spotify-Modus: der selbst gebaute Pool IST die Queue.
-        const targetCards = settings.winCondition.type === 'cards' ? settings.winCondition.n : 10;
+        // "vinyl-uno" hat kein Karten-Ziel (Rennen auf leere Hand) — Richtwert
+        // stattdessen an Starthand × Spielerzahl anlehnen (Fehlversuche brauchen
+        // zusätzliche Songs, der outOfTracks-Fallback fängt ein zu kurzes Deck ab).
+        const targetCards =
+          settings.mode === 'vinyl-uno'
+            ? settings.startingHandSize * Math.max(2, list.length)
+            : settings.winCondition.type === 'cards'
+              ? settings.winCondition.n
+              : 10;
         const minNeeded = Math.max(targetCards + 3, 8);
         if (pool.length < minNeeded) {
           throw new Error(
@@ -171,6 +179,16 @@ export default function PlayerSetup() {
               label: 'Artist & Titel raten',
               hint: 'Nach richtiger Platzierung Titel & Künstler erraten — optional mit Risiko-Wette.',
             },
+            {
+              id: 'plattenboerse' as const,
+              label: 'Plattenbörse 📀',
+              hint: 'Catan-inspiriert: jeder Treffer bringt eine Dekaden-Marke. Tauschen + volle Sätze gegen Bonuspunkte einlösen.',
+            },
+            {
+              id: 'vinyl-uno' as const,
+              label: 'Vinyl! 🔄',
+              hint: 'UNO-inspiriert: alle starten mit einer Hand voll Songs. Richtig = Karte weg, falsch = Karte dazu, plus Zufalls-Ereignisse. Wer zuerst leer ist, gewinnt.',
+            },
           ]
         ).map((m) => {
           const checked = settings.mode === m.id || (m.id === 'classic-relative' && settings.mode === 'classic-year');
@@ -206,6 +224,26 @@ export default function PlayerSetup() {
               onChange={(e) => setSettings({ wager: e.target.checked })}
             />
           </label>
+        )}
+        {settings.mode === 'vinyl-uno' && (
+          <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm" style={{ background: t.background }}>
+            <span>Starthand-Größe</span>
+            <div className="flex items-center gap-3">
+              <button
+                className="btn-ghost px-3 py-1"
+                onClick={() => setSettings({ startingHandSize: Math.max(4, settings.startingHandSize - 1) })}
+              >
+                −
+              </button>
+              <span className="w-6 text-center font-mono font-bold">{settings.startingHandSize}</span>
+              <button
+                className="btn-ghost px-3 py-1"
+                onClick={() => setSettings({ startingHandSize: Math.min(12, settings.startingHandSize + 1) })}
+              >
+                +
+              </button>
+            </div>
+          </div>
         )}
       </section>
 

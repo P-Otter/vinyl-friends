@@ -6,14 +6,16 @@ type Props = {
   players: Player[];
   currentPlayerId: string;
   targetCards: number;
+  isVinylUno?: boolean; // Hand-Countdown statt Karten-Ziel anzeigen
 };
 
-function PlayerHUD({ players, currentPlayerId, targetCards }: Props) {
+function PlayerHUD({ players, currentPlayerId, targetCards, isVinylUno }: Props) {
   const t = useTheme();
   return (
     <div className="flex flex-wrap gap-3">
       {players.map((p) => {
         const active = p.id === currentPlayerId;
+        const vinylCall = isVinylUno && p.handSize === 1;
         return (
           <div
             key={p.id}
@@ -26,8 +28,9 @@ function PlayerHUD({ players, currentPlayerId, targetCards }: Props) {
           >
             <span className="h-3 w-3 rounded-full" style={{ backgroundColor: p.color }} />
             <span>{p.name}</span>
+            {vinylCall && <span style={{ color: t.highlight }}>🎉 Vinyl!</span>}
             <span style={{ color: t.textMuted }}>
-              {p.cards.length}/{targetCards}
+              {isVinylUno ? `${p.handSize ?? 0} auf der Hand` : `${p.cards.length}/${targetCards}`}
             </span>
           </div>
         );

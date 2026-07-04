@@ -1,4 +1,4 @@
-import type { Player } from '../types';
+import type { GameMode, Player } from '../types';
 import { ranking } from '../lib/scoring';
 import { useTheme } from '../hooks/useTheme';
 import ThemedTitle from './theme/ThemedTitle';
@@ -6,19 +6,21 @@ import Confetti from './theme/Confetti';
 
 type Props = {
   players: Player[];
+  mode: GameMode;
   onNewRound: () => void;
   onBackToSetup: () => void;
 };
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-export default function EndScreen({ players, onNewRound, onBackToSetup }: Props) {
+export default function EndScreen({ players, mode, onNewRound, onBackToSetup }: Props) {
   const t = useTheme();
-  const stats = ranking(players);
+  const isVinylUno = mode === 'vinyl-uno';
+  const stats = ranking(players, mode);
   const winner = stats[0];
   const byId = new Map(players.map((p) => [p.id, p]));
   // Bonus-Spalte nur zeigen, wenn im Modus "Wessen Liebling?"/"Artist & Titel
-  // raten" tatsächlich Bonuspunkte gesammelt wurden — sonst unnötiges "0" überall.
+  // raten"/Plattenbörse tatsächlich Bonuspunkte gesammelt wurden.
   const hasBonus = stats.some((s) => s.bonusPoints > 0);
 
   return (
@@ -37,7 +39,11 @@ export default function EndScreen({ players, onNewRound, onBackToSetup }: Props)
             {winner.name}
           </div>
           <div className="text-sm font-semibold" style={{ color: t.textMuted }}>
-            gewinnt mit {winner.cards} Karten
+            {isVinylUno
+              ? winner.handSize === 0
+                ? 'gewinnt — Hand leer! 🎉'
+                : `gewinnt mit noch ${winner.handSize} Karte${winner.handSize === 1 ? '' : 'n'} in der Hand`
+              : `gewinnt mit ${winner.cards} Karten`}
           </div>
         </div>
       )}
@@ -62,7 +68,7 @@ export default function EndScreen({ players, onNewRound, onBackToSetup }: Props)
                     🎯 {s.bonusPoints}
                   </span>
                 )}
-                {s.cards} Karten
+                {isVinylUno ? `${s.handSize ?? 0} in der Hand` : `${s.cards} Karten`}
               </span>
             </div>
           );

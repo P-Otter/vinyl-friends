@@ -28,14 +28,23 @@ export type Player = {
   // Stats fürs Endscreen
   attempts: number;
   hits: number;
-  bonusPoints: number; // "Wessen Liebling?"-Treffer + "Artist & Titel raten"-Treffer
+  bonusPoints: number; // "Wessen Liebling?"-Treffer + "Artist & Titel raten"-Treffer + Plattenbörse-Sätze
+  // Plattenbörse (Catan-inspiriert): Dekaden-Marken aus korrekten Platzierungen,
+  // key = Dekaden-Start (z.B. 1980), tauschbar zwischen Spielern.
+  decadeTokens?: Record<number, number>;
+  completedSets?: number; // eingelöste volle Dekaden-Sätze
+  // Vinyl! (UNO-inspiriert): Hand schrumpft bei Treffern, wächst bei Fehlern —
+  // wer zuerst auf 0 ist, gewinnt (umgekehrt zum Sammel-Prinzip der anderen Modi).
+  handSize?: number;
 };
 
 export type GameMode =
   | 'classic-relative'
   | 'classic-year'
   | 'whose-fave'
-  | 'name-that-tune';
+  | 'name-that-tune'
+  | 'plattenboerse'
+  | 'vinyl-uno';
 
 export type WinCondition =
   | { type: 'cards'; n: number }
@@ -61,6 +70,7 @@ export type GameSettings = {
   allowExplicit: boolean;
   snippetMode: { enabled: boolean; lengthSec: number };
   randomOffset: boolean;
+  startingHandSize: number; // nur "vinyl-uno": Kartenzahl zu Spielbeginn
 };
 
 export type GamePhase = 'setup' | 'playing' | 'reveal' | 'finished';
@@ -75,6 +85,12 @@ export type BonusGuessResult = {
   wagered: boolean; // Confidence-Wager gesetzt?
 };
 
+// "Vinyl!": zufälliges Ereignis nach einer Platzierung, fürs Reveal-Overlay.
+export type VinylEvent =
+  | { kind: 'curse'; targetId: string } // Nachbar zieht 2
+  | { kind: 'swap'; targetId: string } // Handgröße mit Zufallsgegner tauschen
+  | { kind: 'purge' }; // alle -1 (min. 0)
+
 // Ergebnis einer Platzierung, fürs Reveal-Overlay festgehalten.
 export type PlacementResult = {
   track: Track;
@@ -82,6 +98,8 @@ export type PlacementResult = {
   insertIndex: number; // gewählte Position in der Timeline (0..len)
   correct: boolean;
   bonus?: BonusGuessResult; // nur im Modus "name-that-tune"
+  decade?: number; // nur "plattenboerse": Dekade der gerade verdienten Marke
+  vinylEvent?: VinylEvent; // nur "vinyl-uno": ausgelöstes Zufallsereignis
 };
 
 export type GameState = {
