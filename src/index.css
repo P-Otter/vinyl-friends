@@ -59,6 +59,24 @@
     @apply mb-2 block text-xs font-black uppercase tracking-widest;
     color: var(--t-text-muted, #1a182080);
   }
+  /* "Vinyl!"-Handkarten: wie eine echte Fächerhand gehalten (Rotation je Karte
+   * über --card-rot, von Bottom-Center aus — das ergibt den Fächer-Bogen ganz
+   * ohne zusätzliche Höhen-Verschiebung), leicht überlappend. Beim Hover richtet
+   * sich die Karte auf, hebt sich ab und kommt vor die Nachbarn. */
+  .vinyl-card {
+    transform: rotate(var(--card-rot, 0deg));
+    transform-origin: bottom center;
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+  }
+  .vinyl-card + .vinyl-card {
+    margin-left: -2.25rem;
+  }
+  .vinyl-card:hover,
+  .vinyl-card:focus-visible {
+    transform: rotate(0deg) translateY(-1.35rem) scale(1.08);
+    z-index: 30 !important;
+    box-shadow: 0 16px 24px -8px rgba(0, 0, 0, 0.4);
+  }
 }
 
 @keyframes vf-bounce {

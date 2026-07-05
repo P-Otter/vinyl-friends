@@ -15,7 +15,7 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 
 export default function EndScreen({ players, mode, onNewRound, onBackToSetup }: Props) {
   const t = useTheme();
-  const isVinylUno = mode === 'vinyl-uno';
+  const isHandCountdown = mode === 'vinyl-uno' || mode === 'plus-minus';
   const isNameThatTune = mode === 'name-that-tune';
   const stats = ranking(players, mode);
   const winner = stats[0];
@@ -40,7 +40,7 @@ export default function EndScreen({ players, mode, onNewRound, onBackToSetup }: 
             {winner.name}
           </div>
           <div className="text-sm font-semibold" style={{ color: t.textMuted }}>
-            {isVinylUno
+            {isHandCountdown
               ? winner.handSize === 0
                 ? 'gewinnt — Hand leer! 🎉'
                 : `gewinnt mit noch ${winner.handSize} Karte${winner.handSize === 1 ? '' : 'n'} in der Hand`
@@ -76,7 +76,7 @@ export default function EndScreen({ players, mode, onNewRound, onBackToSetup }: 
                     🎁 {p?.bonusBank}
                   </span>
                 )}
-                {isVinylUno
+                {isHandCountdown
                   ? `${s.handSize ?? 0} in der Hand`
                   : isNameThatTune
                     ? `${s.cards} Karten · ${s.validated ?? 0} validiert`

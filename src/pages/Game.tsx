@@ -51,6 +51,7 @@ export default function Game() {
   const [revealSeen, setRevealSeen] = useState(false);
   const isPlattenboerse = settings.mode === 'plattenboerse';
   const isVinylUno = settings.mode === 'vinyl-uno';
+  const isPlusMinus = settings.mode === 'plus-minus';
   const decades = useMemo(() => (isPlattenboerse ? decadesInQueue(queue) : []), [isPlattenboerse, queue]);
   // "Vinyl!": vor jeder normalen Runde erst eine Handkarte wählen (Bonusrunden
   // durch "2-für-1" brauchen das nicht — kein Kartenwahl-Schritt dafür).
@@ -332,6 +333,7 @@ export default function Game() {
           currentPlayerId={activePlayer.id}
           targetCards={targetCards}
           isVinylUno={isVinylUno}
+          isPlusMinus={isPlusMinus}
           isNameThatTune={settings.mode === 'name-that-tune'}
           requiredMastered={settings.requiredMastered}
         />

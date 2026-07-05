@@ -49,6 +49,7 @@ export function defaultSettings(): GameSettings {
     randomOffset: true,
     requiredMastered: 3,
     masteryThreshold: 2,
+    plusMinusStartCards: 7,
   };
 }
 
@@ -312,7 +313,7 @@ export const useGameState = create<GameStore>()(
         // "Vinyl!": frisches 32-Karten-Deck bauen + austeilen (Handgröße richtet
         // sich nach der Spielerzahl, damit das Deck fürs Austeilen immer reicht).
         let vinylDeck: VinylCard[] | undefined;
-        let handByPlayer = new Map<string, VinylCard[]>();
+        const handByPlayer = new Map<string, VinylCard[]>();
         if (mode === 'vinyl-uno') {
           let deck = buildVinylDeck();
           const size = vinylHandSize(players.length);
@@ -327,6 +328,13 @@ export const useGameState = create<GameStore>()(
             handByPlayer.set(p.id, hand);
           }
           vinylDeck = deck;
+        } else if (mode === 'plus-minus') {
+          // "Plus/Minus": kein Deck, nur eine reine Zähl-"Hand" ohne Kartentypen —
+          // richtig platziert = -1, falsch = +1 (siehe placeCard).
+          const size = get().settings.plusMinusStartCards;
+          for (const p of players) {
+            handByPlayer.set(p.id, Array.from({ length: size }, (_, i) => ({ id: `${p.id}-pm${i}`, type: 'normal' as const })));
+          }
         }
 
         set({
@@ -352,7 +360,7 @@ export const useGameState = create<GameStore>()(
             completedSets: 0,
             unvalidatedCardIds: [],
             bonusBank: 0,
-            hand: mode === 'vinyl-uno' ? handByPlayer.get(p.id) : undefined,
+            hand: handByPlayer.get(p.id),
           })),
         });
       },
@@ -381,6 +389,13 @@ export const useGameState = create<GameStore>()(
               decade !== undefined
                 ? { ...p.decadeTokens, [decade]: (p.decadeTokens?.[decade] ?? 0) + 1 }
                 : p.decadeTokens,
+            // "Plus/Minus": kein Kartendeck, nur -1 bei Treffer / +1 bei Fehlschlag.
+            hand:
+              mode === 'plus-minus'
+                ? correct
+                  ? (p.hand ?? []).slice(1)
+                  : [...(p.hand ?? []), { id: localId('pm'), type: 'normal' as const }]
+                : p.hand,
           };
         });
 
@@ -570,15 +585,16 @@ export const useGameState = create<GameStore>()(
         // "name-that-tune" = braucht win.n TOTAL Karten UND mindestens requiredMastered
         // davon validiert (zwei unabhängige Zahlen, wie in der iOS-App).
         const win = state.settings.winCondition;
+        const isHandCountdown = mode === 'vinyl-uno' || mode === 'plus-minus';
         const reachedCards =
-          mode !== 'vinyl-uno' &&
+          !isHandCountdown &&
           win.type === 'cards' &&
           state.players.some((p) =>
             mode === 'name-that-tune'
               ? p.cards.length >= win.n && validatedCount(p) >= state.settings.requiredMastered
               : p.cards.length >= win.n,
           );
-        const handEmpty = mode === 'vinyl-uno' && state.players.some((p) => (p.hand?.length ?? 0) <= 0);
+        const handEmpty = isHandCountdown && state.players.some((p) => (p.hand?.length ?? 0) <= 0);
         const timeUp =
           win.type === 'time' &&
           state.startedAt !== undefined &&

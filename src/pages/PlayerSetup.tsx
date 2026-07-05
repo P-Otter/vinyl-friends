@@ -73,22 +73,31 @@ export default function PlayerSetup() {
       let queue: Track[];
       if (isPoolMode) {
         // Ohne-Spotify-Modus: der selbst gebaute Pool IST die Queue.
-        // "vinyl-uno" hat kein Karten-Ziel (Rennen auf leere Hand) — Richtwert
-        // stattdessen an Starthand × Spielerzahl anlehnen (Fehlversuche brauchen
-        // zusätzliche Songs, der outOfTracks-Fallback fängt ein zu kurzes Deck ab).
+        // "vinyl-uno"/"plus-minus" haben kein Karten-Ziel (Rennen auf leere Hand) —
+        // Richtwert stattdessen an Starthand × Spielerzahl anlehnen (Fehlversuche
+        // brauchen zusätzliche Songs, der outOfTracks-Fallback fängt ein zu kurzes
+        // Deck/Pool ab).
         const targetCards =
           settings.mode === 'vinyl-uno'
             ? vinylHandSize(Math.max(2, list.length)) * Math.max(2, list.length)
-            : settings.winCondition.type === 'cards'
-              ? settings.winCondition.n
-              : 10;
+            : settings.mode === 'plus-minus'
+              ? settings.plusMinusStartCards * Math.max(2, list.length)
+              : settings.winCondition.type === 'cards'
+                ? settings.winCondition.n
+                : 10;
         // "Artist & Titel raten" braucht im Schnitt deutlich mehr Versuche pro
         // validierter Karte (Platzierung UND ≥2/3 Bonusfelder nötig) — größerer
-        // Puffer, damit der Pool nicht vorzeitig ausgeht.
+        // Puffer, damit der Pool nicht vorzeitig ausgeht. "Plus/Minus" hat (anders
+        // als "Vinyl!") kein festes Deck-Limit — falsche Tipps lassen die Hand
+        // NETTO wachsen (+1, statt bei "Vinyl!" abgelegt+nachgezogen = ±0), daher
+        // etwas mehr Puffer als die generischen Modi, aber moderat (ein einzelner
+        // 40-Song-Pack-Pack muss für 2 Spieler mit Standard-Starthand reichen).
         const minNeeded =
           settings.mode === 'name-that-tune'
             ? Math.max(targetCards * 4 + 5, 12)
-            : Math.max(targetCards + 3, 8);
+            : settings.mode === 'plus-minus'
+              ? Math.max(targetCards * 2 + 5, 15)
+              : Math.max(targetCards + 3, 8);
         if (pool.length < minNeeded) {
           throw new Error(
             `Zu wenige Songs im Pool (${pool.length}). Mindestens ${minNeeded} nötig — geh zurück und füg mehr hinzu.`,
@@ -197,6 +206,11 @@ export default function PlayerSetup() {
               label: 'Vinyl! 🔄',
               hint: 'Echtes Kartenspiel: jede*r hat eine Hand aus dem 32er-Deck (Reverse, Skip, Zieh-1/2, Wunschkarte, Tausch, 2-für-1). Vor dem Song eine Karte wählen — bei Treffer wird ihr Effekt gültig, sonst 1 Strafkarte. Wer zuerst leer ist, gewinnt.',
             },
+            {
+              id: 'plus-minus' as const,
+              label: 'Plus/Minus ➕➖',
+              hint: 'Die einfache Variante von Vinyl!: kein Kartendeck, keine Sondereffekte. Richtig platziert = −1 Karte, falsch = +1 Karte. Wer zuerst leer ist, gewinnt.',
+            },
           ]
         ).map((m) => {
           const checked = settings.mode === m.id || (m.id === 'classic-relative' && settings.mode === 'classic-year');
@@ -273,6 +287,26 @@ export default function PlayerSetup() {
               </span>
             </span>
             <span className="font-mono font-bold">{vinylHandSize(Math.max(2, list.length))}</span>
+          </div>
+        )}
+        {settings.mode === 'plus-minus' && (
+          <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm" style={{ background: t.background }}>
+            <span>Start-Kartenzahl</span>
+            <div className="flex items-center gap-3">
+              <button
+                className="btn-ghost px-3 py-1"
+                onClick={() => setSettings({ plusMinusStartCards: Math.max(3, settings.plusMinusStartCards - 1) })}
+              >
+                −
+              </button>
+              <span className="w-6 text-center font-mono font-bold">{settings.plusMinusStartCards}</span>
+              <button
+                className="btn-ghost px-3 py-1"
+                onClick={() => setSettings({ plusMinusStartCards: Math.min(15, settings.plusMinusStartCards + 1) })}
+              >
+                +
+              </button>
+            </div>
           </div>
         )}
       </section>

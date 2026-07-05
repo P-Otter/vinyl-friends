@@ -107,7 +107,7 @@ export function ranking(players: Player[], mode?: GameMode): PlayerStats[] {
     handSize: p.hand?.length,
   }));
 
-  if (mode === 'vinyl-uno') {
+  if (mode === 'vinyl-uno' || mode === 'plus-minus') {
     return stats.sort((a, b) => (a.handSize ?? Infinity) - (b.handSize ?? Infinity) || b.cards - a.cards);
   }
   if (mode === 'name-that-tune') {

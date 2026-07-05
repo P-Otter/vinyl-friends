@@ -1,8 +1,8 @@
 // "Vinyl!": vor jedem Song erst eine Handkarte wählen. Privacy-Gate davor
 // (Bildschirm zur aktiven Person drehen), damit die Hand nur ihr sichtbar ist.
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import type { Player } from '../types';
-import { VINYL_CARD_INFO } from '../lib/vinylDeck';
+import { VINYL_CARD_INFO, VINYL_CARD_TYPE_ORDER } from '../lib/vinylDeck';
 import { useTheme } from '../hooks/useTheme';
 
 type Props = {
@@ -71,30 +71,52 @@ export default function VinylHandPicker({
   }
 
   const hand = activePlayer.hand ?? [];
+  // Wie eine echte Fächerhand: mittlere Karte gerade, Rand-Karten kippen nach
+  // außen (Rotationswinkel gedeckelt, sonst würden große Hände nach Straf-
+  // karten albern aussehen).
+  const mid = (hand.length - 1) / 2;
 
   return (
     <section className="panel space-y-3">
       <p className="field-label mb-0" style={{ color: activePlayer.color }}>
         {activePlayer.name}s Hand — eine Karte für diese Runde wählen
       </p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {hand.map((card) => {
-          const info = VINYL_CARD_INFO[card.type];
-          return (
-            <button
-              key={card.id}
-              className="flex flex-col items-center gap-1 rounded-xl p-3 text-center"
-              style={{ background: t.background, border: `1px solid ${t.surfaceStroke}66` }}
-              onClick={() => (card.type === 'wish-decade' ? setWishCardId(card.id) : onSelectCard(card.id))}
-            >
-              <span className="text-2xl">{info.emoji}</span>
-              <span className="text-xs font-bold">{info.label}</span>
-              <span className="text-[10px]" style={{ color: t.textMuted }}>
-                {info.hint}
-              </span>
-            </button>
-          );
-        })}
+      <div className="overflow-x-auto overflow-y-visible px-6 pb-3 pt-8">
+        <div className="flex w-max justify-center">
+          {hand.map((card, i) => {
+            const info = VINYL_CARD_INFO[card.type];
+            const typeColor = t.playerColors[VINYL_CARD_TYPE_ORDER.indexOf(card.type) % t.playerColors.length];
+            const rotation = Math.max(-16, Math.min(16, (i - mid) * 7));
+            return (
+              <button
+                key={card.id}
+                className="vinyl-card flex w-[92px] shrink-0 flex-col items-center gap-1 rounded-2xl p-2.5 text-center"
+                style={{
+                  '--card-rot': `${rotation}deg`,
+                  zIndex: i,
+                  background: `linear-gradient(to bottom, ${t.surface}, ${typeColor}26)`,
+                  border: `${t.strokeWidth}px solid ${typeColor}b3`,
+                  borderTop: `5px solid ${typeColor}`,
+                  boxShadow: 'var(--t-shadow)',
+                } as CSSProperties}
+                onClick={() => (card.type === 'wish-decade' ? setWishCardId(card.id) : onSelectCard(card.id))}
+              >
+                <span
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-2xl"
+                  style={{ background: `${typeColor}40` }}
+                >
+                  {info.emoji}
+                </span>
+                <span className="text-[11px] font-black leading-tight" style={{ color: t.text }}>
+                  {info.label}
+                </span>
+                <span className="text-[9px] leading-tight" style={{ color: t.textMuted }}>
+                  {info.hint}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </section>
   );

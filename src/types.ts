@@ -51,7 +51,8 @@ export type GameMode =
   | 'whose-fave'
   | 'name-that-tune'
   | 'plattenboerse'
-  | 'vinyl-uno';
+  | 'vinyl-uno'
+  | 'plus-minus';
 
 export type WinCondition =
   | { type: 'cards'; n: number }
@@ -83,6 +84,8 @@ export type GameSettings = {
   // "Artist & Titel raten": wie viele von {Jahr, Titel, Artist} müssen stimmen,
   // damit eine Karte als validiert zählt (2 = leichter, 3 = alle nötig).
   masteryThreshold: number;
+  // "Plus/Minus": Start-Handgröße (frei wählbar, kein Deck-Limit wie bei "Vinyl!").
+  plusMinusStartCards: number;
 };
 
 export type GamePhase = 'setup' | 'playing' | 'reveal' | 'finished';

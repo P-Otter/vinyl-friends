@@ -34,6 +34,11 @@ const MODES: { id: GameMode; label: string; hint: string }[] = [
     label: 'Vinyl! 🔄',
     hint: 'Echtes Kartenspiel: jede*r hat eine Hand aus dem 32er-Deck (Reverse, Skip, Zieh-1/2, Wunschkarte, Tausch, 2-für-1). Vor dem Song eine Karte wählen — bei Treffer wird ihr Effekt gültig, sonst 1 Strafkarte. Wer zuerst leer ist, gewinnt.',
   },
+  {
+    id: 'plus-minus',
+    label: 'Plus/Minus ➕➖',
+    hint: 'Die einfache Variante von Vinyl!: kein Kartendeck, keine Sondereffekte. Richtig platziert = −1 Karte, falsch = +1 Karte. Wer zuerst leer ist, gewinnt.',
+  },
 ];
 
 export default function Setup() {
@@ -131,6 +136,22 @@ export default function Setup() {
             mehr Spieler: entsprechend weniger) — die genaue Zahl siehst du auf der
             nächsten Seite, sobald alle Spieler eingetragen sind.
           </p>
+        </section>
+      ) : settings.mode === 'plus-minus' ? (
+        <section className="panel space-y-3">
+          <label className="field-label">Start-Kartenzahl</label>
+          <div className="flex items-center gap-2">
+            Jede Person startet mit
+            <input
+              type="number"
+              min={3}
+              max={15}
+              value={settings.plusMinusStartCards}
+              onChange={(e) => setSettings({ plusMinusStartCards: Number(e.target.value) })}
+              className="w-20 rounded-lg bg-panel2 px-3 py-2 text-center"
+            />
+            Karten auf der Hand
+          </div>
         </section>
       ) : (
         <section className="panel space-y-3">

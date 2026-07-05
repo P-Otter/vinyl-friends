@@ -27,6 +27,21 @@ export const VINYL_CARD_INFO: Record<VinylCardType, { emoji: string; label: stri
   double: { emoji: '✌️', label: '2-für-1', hint: 'Bei Treffer direkt noch ein Song — ohne neue Kartenwahl.' },
 };
 
+// Feste Reihenfolge für eine wiedererkennbare Kartentyp-Farbe (Index in
+// AppTheme.playerColors) — jedes Theme hat genau 8 Spielerfarben, die schon
+// aufeinander abgestimmt sind, also als "Kartenfarben" wiederverwenden statt
+// eigene, evtl. themenfremde Fixfarben zu erfinden.
+export const VINYL_CARD_TYPE_ORDER: VinylCardType[] = [
+  'normal',
+  'reverse',
+  'skip',
+  'draw1',
+  'draw2',
+  'wish-decade',
+  'swap-hand',
+  'double',
+];
+
 function shuffle<T>(arr: T[]): T[] {
   const out = [...arr];
   for (let i = out.length - 1; i > 0; i--) {

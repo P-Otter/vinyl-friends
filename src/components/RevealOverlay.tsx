@@ -131,6 +131,15 @@ export default function RevealOverlay({
             <VinylCardResult vinylPlay={result.vinylPlay} players={players} />
           )}
 
+          {mode === 'plus-minus' && (
+            <div
+              className="mt-4 rounded-xl px-4 py-3 text-sm font-bold"
+              style={{ background: `${stampColor}26`, color: stampColor }}
+            >
+              {correct ? '−1 Karte auf der Hand' : '+1 Karte auf der Hand'}
+            </div>
+          )}
+
           {!tunePending && (
             <button className="btn-primary mt-6 w-full" onClick={onNext}>
               Weiter →
