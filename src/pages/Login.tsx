@@ -4,7 +4,6 @@ import { useAuth, isPremium } from '../auth-context';
 import { useGameState } from '../hooks/useGameState';
 import { useTheme } from '../hooks/useTheme';
 import VinylDisc from '../components/theme/VinylDisc';
-import ThemePicker from '../components/theme/ThemePicker';
 import ThemedTitle from '../components/theme/ThemedTitle';
 import SpotifyLoginButton from '../components/SpotifyLoginButton';
 
@@ -41,8 +40,6 @@ export default function Login() {
       <p className="mb-8 font-semibold" style={{ color: t.textMuted }}>
         Hör den Song. Schätze das Jahr. Bau deine Zeitleiste!
       </p>
-
-      <ThemePicker />
 
       <div className="mt-6 w-full max-w-md space-y-4">
         <button className="btn-primary w-full py-4 text-lg" onClick={startPool}>

@@ -5,6 +5,7 @@ import { useAuth } from '../auth-context';
 import PlaylistPicker from '../components/PlaylistPicker';
 import ThemeChips from '../components/ThemeChips';
 import MixSlider from '../components/MixSlider';
+import ThemePicker from '../components/theme/ThemePicker';
 import type { GameMode } from '../types';
 
 const MODES: { id: GameMode; label: string; hint: string }[] = [
@@ -62,6 +63,8 @@ export default function Setup() {
           </button>
         </div>
       </header>
+
+      <ThemePicker />
 
       <section className="panel space-y-3">
         <label className="field-label">Friends-Playlist</label>

@@ -9,6 +9,7 @@ import { useGameState } from '../hooks/useGameState';
 import { useTheme } from '../hooks/useTheme';
 import ThemedTitle from '../components/theme/ThemedTitle';
 import ThemedField from '../components/theme/ThemedField';
+import ThemePicker from '../components/theme/ThemePicker';
 import type { Track } from '../types';
 import packsData from '../data/song-packs.json';
 
@@ -150,6 +151,8 @@ export default function PoolBuilder() {
       <p className="text-sm" style={{ color: t.textMuted }}>
         Ohne Spotify, ohne Konto — gespielt wird mit 30-Sekunden-Hörproben.
       </p>
+
+      <ThemePicker />
 
       <section className="panel space-y-3">
         <label className="field-label mb-0">Fertige Packs — Tipp: hinzufügen</label>
