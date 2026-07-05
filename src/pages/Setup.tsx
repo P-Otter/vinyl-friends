@@ -41,6 +41,8 @@ const MODES: { id: GameMode; label: string; hint: string }[] = [
   },
 ];
 
+const SNIPPET_LENGTHS = [10, 15, 20, 30, 45, 60];
+
 export default function Setup() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -206,6 +208,37 @@ export default function Setup() {
           )}
         </section>
       )}
+
+      <section className="panel space-y-3">
+        <label className="field-label">Hörprobe-Länge</label>
+        <div className="flex flex-wrap gap-2">
+          {SNIPPET_LENGTHS.map((sec) => (
+            <button
+              key={sec}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                settings.snippetMode.enabled && settings.snippetMode.lengthSec === sec
+                  ? 'bg-accent text-black'
+                  : 'bg-panel2 text-slate-300'
+              }`}
+              onClick={() => setSettings({ snippetMode: { enabled: true, lengthSec: sec } })}
+            >
+              {sec}s
+            </button>
+          ))}
+          <button
+            className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+              !settings.snippetMode.enabled ? 'bg-accent text-black' : 'bg-panel2 text-slate-300'
+            }`}
+            onClick={() => setSettings({ snippetMode: { ...settings.snippetMode, enabled: false } })}
+          >
+            Ganzer Song
+          </button>
+        </div>
+        <p className="text-xs text-slate-500">
+          Song pausiert automatisch nach der gewählten Zeit — gilt für alle Modi. Jederzeit
+          manuell weiterhörbar (Play-Button).
+        </p>
+      </section>
 
       <section className="panel">
         <button

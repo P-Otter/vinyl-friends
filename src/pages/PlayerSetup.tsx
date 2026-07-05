@@ -10,6 +10,7 @@ import ThemedField from '../components/theme/ThemedField';
 import type { Track } from '../types';
 
 const DEFAULT_NAMES = ['Spieler 1', 'Spieler 2'];
+const SNIPPET_LENGTHS = [10, 15, 20, 30, 45, 60];
 
 function shuffle<T>(arr: T[]): T[] {
   const out = [...arr];
@@ -309,6 +310,39 @@ export default function PlayerSetup() {
             </div>
           </div>
         )}
+      </section>
+
+      <section className="panel space-y-3">
+        <label className="field-label mb-0">Hörprobe-Länge</label>
+        <div className="flex flex-wrap gap-2">
+          {SNIPPET_LENGTHS.map((sec) => (
+            <button
+              key={sec}
+              className="rounded-lg px-3 py-2 text-sm font-semibold"
+              style={{
+                background: settings.snippetMode.enabled && settings.snippetMode.lengthSec === sec ? t.highlight : t.background,
+                color: settings.snippetMode.enabled && settings.snippetMode.lengthSec === sec ? t.onAccent : t.textMuted,
+              }}
+              onClick={() => setSettings({ snippetMode: { enabled: true, lengthSec: sec } })}
+            >
+              {sec}s
+            </button>
+          ))}
+          <button
+            className="rounded-lg px-3 py-2 text-sm font-semibold"
+            style={{
+              background: !settings.snippetMode.enabled ? t.highlight : t.background,
+              color: !settings.snippetMode.enabled ? t.onAccent : t.textMuted,
+            }}
+            onClick={() => setSettings({ snippetMode: { ...settings.snippetMode, enabled: false } })}
+          >
+            Ganzer Song
+          </button>
+        </div>
+        <p className="text-xs" style={{ color: t.textMuted }}>
+          Song pausiert automatisch nach der gewählten Zeit — gilt für alle Modi. Jederzeit
+          manuell weiterhörbar (Play-Button).
+        </p>
       </section>
 
       {error && (
