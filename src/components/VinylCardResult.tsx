@@ -38,7 +38,9 @@ export default function VinylCardResult({ vinylPlay, players }: Props) {
         text = `${info.emoji} Wunschkarte eingelöst — ${vinylPlay.wishDecade}er wie gewünscht!`;
         break;
       case 'swap-hand':
-        text = `${info.emoji} Tausch! Hand mit ${nameOf(vinylPlay.targetId)} getauscht.`;
+        text = vinylPlay.targetId
+          ? `${info.emoji} Tausch! Hand mit ${nameOf(vinylPlay.targetId)} getauscht.`
+          : `${info.emoji} Tausch war deine letzte Karte — nichts zu tauschen, Hand leer!`;
         break;
       case 'double':
         text = `${info.emoji} 2-für-1! Gleich noch ein Song — ohne neue Kartenwahl.`;

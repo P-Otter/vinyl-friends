@@ -50,6 +50,11 @@ export default function RevealOverlay({
   // die Lösung (oder zumindest ob's richtig war) über dem Rateformular.
   const tunePending = mode === 'name-that-tune' && !result.tuneRoundFinished;
   const stampColor = tunePending ? t.highlight : correct ? t.good : t.bad;
+  // In den Hand-Countdown-Modi (Sieg = leere Hand) ist die Timeline-Kartenzahl
+  // NICHT die Sieg-Metrik — die generische "+1 Karte"-Zeile würde dort neben der
+  // "−1 Karte auf der Hand"-Zeile stehen und widersprüchlich wirken. Deshalb dort
+  // ohne die Karten-Zahl formulieren; die Hand-Änderung zeigt der modusspezifische Block.
+  const isHandCountdown = mode === 'vinyl-uno' || mode === 'plus-minus';
 
   return (
     // overflow-y-auto + min-h-full: auf kleinen Viewports (iPhone quer) wird
@@ -93,7 +98,13 @@ export default function RevealOverlay({
               className="mt-6 rounded-xl px-4 py-3 font-bold"
               style={{ background: `${stampColor}26`, color: stampColor }}
             >
-              {correct ? '✓ Richtig platziert! +1 Karte' : '✗ Falsch — keine Karte'}
+              {isHandCountdown
+                ? correct
+                  ? '✓ Richtig platziert!'
+                  : '✗ Daneben platziert'
+                : correct
+                  ? '✓ Richtig platziert! +1 Karte'
+                  : '✗ Falsch — keine Karte'}
             </div>
           )}
 

@@ -136,10 +136,12 @@ export default function PoolBuilder() {
   const t = useTheme();
 
   const start = () => {
+    // snippetMode NICHT hier setzen — die "Hörprobe-Länge" wählt der Nutzer auf
+    // der nächsten Seite (PlayerSetup); ein Reset hier würde diese Wahl bei einem
+    // erneuten Durchlauf über /pool überschreiben.
     setSettings({
       musicSource: 'preview',
       winCondition: { type: 'cards', n: targetCards },
-      snippetMode: { enabled: false, lengthSec: 30 },
       randomOffset: false,
     });
     navigate('/players');

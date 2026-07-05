@@ -160,12 +160,16 @@ function resolveVinylCardPlay(
         break;
       case 'swap-hand': {
         const others = players.filter((p) => p.id !== playerId);
-        if (others.length > 0) {
+        // "me" MUSS aus nextPlayers kommen (schon ohne die gespielte Karte),
+        // sonst würde die eben abgelegte Karte mit hinübergetauscht.
+        const me = nextPlayers.find((p) => p.id === playerId);
+        // War die Tausch-Karte die LETZTE Karte (Hand jetzt leer), verpufft der
+        // Tausch: sonst würde die aktive Person ihren verdienten Sieg (leere Hand)
+        // weggeben und die Zielperson bekäme grundlos die leere Gewinner-Hand.
+        // Ohne Tausch behält die aktive Person die leere Hand und gewinnt regulär.
+        if (others.length > 0 && (me?.hand?.length ?? 0) > 0) {
           const target = others[Math.floor(Math.random() * others.length)];
           targetId = target.id;
-          // "me" MUSS aus nextPlayers kommen (schon ohne die gespielte Karte),
-          // sonst würde die eben abgelegte Karte mit hinübergetauscht.
-          const me = nextPlayers.find((p) => p.id === playerId);
           nextPlayers = nextPlayers.map((p) => {
             if (p.id === playerId) return { ...p, hand: target.hand ?? [] };
             if (p.id === target.id) return { ...p, hand: me?.hand ?? [] };
@@ -511,6 +515,14 @@ export const useGameState = create<GameStore>()(
 
       continueVinylBonusRound: () => {
         const state = get();
+        // War die "2-für-1"-Karte die letzte Karte (Hand jetzt leer), sofort
+        // gewinnen — sonst würde eine leere Hand in eine sinnlose Bonusrunde
+        // gezwungen (Sieg erst eine Phantom-Runde später). nextPlayer prüft das
+        // schon so; hier fehlte der Check.
+        if (state.players.some((p) => (p.hand?.length ?? 0) <= 0)) {
+          set({ phase: 'finished', lastResult: undefined });
+          return;
+        }
         const nextIndex = advanceTrack(state);
         if (nextIndex >= state.queue.length) {
           set({ phase: 'finished', lastResult: undefined });
