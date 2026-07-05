@@ -11,6 +11,7 @@ import PlayControls from '../components/PlayControls';
 import PlayerHUD from '../components/PlayerHUD';
 import RevealOverlay from '../components/RevealOverlay';
 import MarketPanel from '../components/MarketPanel';
+import VinylHandPicker from '../components/VinylHandPicker';
 
 export default function Game() {
   const navigate = useNavigate();
@@ -24,10 +25,15 @@ export default function Game() {
     currentPlayerIdx,
     round,
     lastResult,
+    pendingVinylCard,
+    vinylBonusRoundActive,
     placeCard,
     nextPlayer,
     skipTrack,
     resetGame,
+    confirmScreenTurned,
+    selectVinylCard,
+    continueVinylBonusRound,
     awardFaveGuess,
     submitTuneGuess,
     submitTuneSteal,
@@ -46,6 +52,13 @@ export default function Game() {
   const isPlattenboerse = settings.mode === 'plattenboerse';
   const isVinylUno = settings.mode === 'vinyl-uno';
   const decades = useMemo(() => (isPlattenboerse ? decadesInQueue(queue) : []), [isPlattenboerse, queue]);
+  // "Vinyl!": vor jeder normalen Runde erst eine Handkarte wählen (Bonusrunden
+  // durch "2-für-1" brauchen das nicht — kein Kartenwahl-Schritt dafür).
+  const showVinylPicker = isVinylUno && phase === 'playing' && !vinylBonusRoundActive && !pendingVinylCard?.card;
+  const vinylDecadeOptions = useMemo(
+    () => (isVinylUno ? decadesInQueue(queue.slice(currentTrackIndex)) : []),
+    [isVinylUno, queue, currentTrackIndex],
+  );
 
   // Flüssige Fortschrittsanzeige (500-ms-Ticker). Auf langsamen Geräten abschaltbar,
   // weil die häufigen Re-Renders das Audio des Web Playback SDK ruckeln lassen können.
@@ -212,92 +225,105 @@ export default function Game() {
         </div>
       )}
 
-      <section className="panel">
-        <PlayControls
-          isPlaying={player.isPlaying}
-          positionMs={player.positionMs}
-          durationMs={player.durationMs || track.durationMs}
-          started={started}
-          onStart={startSong}
-          onTogglePlay={togglePlay}
-          disabled={!playerReady || busy}
+      {showVinylPicker ? (
+        <VinylHandPicker
+          activePlayer={activePlayer}
+          screenTurned={pendingVinylCard?.screenTurned ?? false}
+          decadeOptions={vinylDecadeOptions}
+          onConfirmScreenTurned={confirmScreenTurned}
+          onSelectCard={(cardId, wishDecade) => selectVinylCard(activePlayer.id, cardId, wishDecade)}
         />
-        {playError && (
-          <p className="mt-3 text-sm font-semibold" style={{ color: t.bad }}>
-            {playError}
-          </p>
-        )}
-        {!isPreviewMode && (
-          <label className="mt-3 flex items-center gap-2 text-xs" style={{ color: t.textMuted }}>
-            <input
-              type="checkbox"
-              checked={smoothProgress}
-              onChange={(e) => setSmoothProgress(e.target.checked)}
-              className="accent-accent"
+      ) : (
+        <>
+          <section className="panel">
+            <PlayControls
+              isPlaying={player.isPlaying}
+              positionMs={player.positionMs}
+              durationMs={player.durationMs || track.durationMs}
+              started={started}
+              onStart={startSong}
+              onTogglePlay={togglePlay}
+              disabled={!playerReady || busy}
             />
-            Flüssige Fortschrittsanzeige
-            <span>— bei Rucklern ausschalten</span>
-          </label>
-        )}
-      </section>
-
-      <section className="panel space-y-4">
-        <div className="flex items-center justify-between">
-          <label className="field-label mb-0">Spielfelder — wohin gehört der Song?</label>
-          <span className="text-xs" style={{ color: t.textMuted }}>
-            älter ← → neuer (Jahre erst beim Reveal)
-          </span>
-        </div>
-
-        {players.map((p) => {
-          const isActive = p.id === activePlayer.id;
-          return (
-            <div key={p.id} className={`space-y-1.5 ${isActive ? '' : 'opacity-45 grayscale'}`}>
-              <div
-                className="flex items-center gap-1.5 text-xs font-black"
-                style={{ color: isActive ? p.color : t.textMuted }}
-              >
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
-                {p.name}
-              </div>
-              <Timeline
-                cards={sortByYear(p.cards)}
-                selectedGap={isActive ? selectedGap : null}
-                onSelectGap={isActive ? setSelectedGap : () => {}}
-                disabled={!isActive || !canPlaceNow}
-                maskedCardId={isActive && tuneGuessPending ? lastResult?.track.id : undefined}
-              />
-            </div>
-          );
-        })}
-
-        {phase === 'reveal' && revealSeen ? (
-          <button
-            className="btn-primary w-full"
-            onClick={() => {
-              setRevealSeen(false);
-              nextPlayer();
-            }}
-          >
-            Nächstes Team →
-          </button>
-        ) : (
-          <>
-            <button
-              className="btn-primary w-full"
-              disabled={!canPlaceNow || selectedGap === null}
-              onClick={confirmPlacement}
-            >
-              Platzieren &amp; aufdecken
-            </button>
-            {!started && (
-              <p className="text-xs" style={{ color: t.textMuted }}>
-                Erst „Song starten" — dann eine Position wählen.
+            {playError && (
+              <p className="mt-3 text-sm font-semibold" style={{ color: t.bad }}>
+                {playError}
               </p>
             )}
-          </>
-        )}
-      </section>
+            {!isPreviewMode && (
+              <label className="mt-3 flex items-center gap-2 text-xs" style={{ color: t.textMuted }}>
+                <input
+                  type="checkbox"
+                  checked={smoothProgress}
+                  onChange={(e) => setSmoothProgress(e.target.checked)}
+                  className="accent-accent"
+                />
+                Flüssige Fortschrittsanzeige
+                <span>— bei Rucklern ausschalten</span>
+              </label>
+            )}
+          </section>
+
+          <section className="panel space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="field-label mb-0">Spielfelder — wohin gehört der Song?</label>
+              <span className="text-xs" style={{ color: t.textMuted }}>
+                älter ← → neuer (Jahre erst beim Reveal)
+              </span>
+            </div>
+
+            {players.map((p) => {
+              const isActive = p.id === activePlayer.id;
+              return (
+                <div key={p.id} className={`space-y-1.5 ${isActive ? '' : 'opacity-45 grayscale'}`}>
+                  <div
+                    className="flex items-center gap-1.5 text-xs font-black"
+                    style={{ color: isActive ? p.color : t.textMuted }}
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
+                    {p.name}
+                  </div>
+                  <Timeline
+                    cards={sortByYear(p.cards)}
+                    selectedGap={isActive ? selectedGap : null}
+                    onSelectGap={isActive ? setSelectedGap : () => {}}
+                    disabled={!isActive || !canPlaceNow}
+                    maskedCardId={isActive && tuneGuessPending ? lastResult?.track.id : undefined}
+                  />
+                </div>
+              );
+            })}
+
+            {phase === 'reveal' && revealSeen ? (
+              <button
+                className="btn-primary w-full"
+                onClick={() => {
+                  setRevealSeen(false);
+                  if (vinylBonusRoundActive) continueVinylBonusRound();
+                  else nextPlayer();
+                }}
+              >
+                {vinylBonusRoundActive ? 'Bonus-Song →' : 'Nächstes Team →'}
+              </button>
+            ) : (
+              <>
+                <button
+                  className="btn-primary w-full"
+                  disabled={!canPlaceNow || selectedGap === null}
+                  onClick={confirmPlacement}
+                >
+                  Platzieren &amp; aufdecken
+                </button>
+                {!started && (
+                  <p className="text-xs" style={{ color: t.textMuted }}>
+                    Erst „Song starten" — dann eine Position wählen.
+                  </p>
+                )}
+              </>
+            )}
+          </section>
+        </>
+      )}
 
       <section>
         <h2 className="field-label">Spielstand</h2>

@@ -32,7 +32,7 @@ const MODES: { id: GameMode; label: string; hint: string }[] = [
   {
     id: 'vinyl-uno',
     label: 'Vinyl! 🔄',
-    hint: 'UNO-inspiriert: alle starten mit einer Hand voll Songs. Richtig = Karte weg, falsch = Karte dazu. Wer zuerst leer ist, gewinnt — plus Zufalls-Ereignisse.',
+    hint: 'Echtes Kartenspiel: jede*r hat eine Hand aus dem 32er-Deck (Reverse, Skip, Zieh-1/2, Wunschkarte, Tausch, 2-für-1). Vor dem Song eine Karte wählen — bei Treffer wird ihr Effekt gültig, sonst 1 Strafkarte. Wer zuerst leer ist, gewinnt.',
   },
 ];
 
@@ -126,18 +126,11 @@ export default function Setup() {
       {settings.mode === 'vinyl-uno' ? (
         <section className="panel space-y-3">
           <label className="field-label">Starthand-Größe</label>
-          <div className="flex items-center gap-2">
-            Jede*r startet mit
-            <input
-              type="number"
-              min={4}
-              max={12}
-              value={settings.startingHandSize}
-              onChange={(e) => setSettings({ startingHandSize: Number(e.target.value) })}
-              className="w-20 rounded-lg bg-panel2 px-3 py-2 text-center"
-            />
-            Songs auf der Hand — wer zuerst leer ist, gewinnt.
-          </div>
+          <p className="text-sm text-slate-400">
+            Richtet sich automatisch nach der Spieleranzahl (2-4 Spieler: 7 Karten,
+            mehr Spieler: entsprechend weniger) — die genaue Zahl siehst du auf der
+            nächsten Seite, sobald alle Spieler eingetragen sind.
+          </p>
         </section>
       ) : (
         <section className="panel space-y-3">

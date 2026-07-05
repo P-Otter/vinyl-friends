@@ -4,6 +4,7 @@ import { makePlayer, useGameState } from '../hooks/useGameState';
 import { usePool } from '../hooks/usePool';
 import { useTheme } from '../hooks/useTheme';
 import { buildQueue } from '../lib/queue-builder';
+import { vinylHandSize } from '../lib/vinylDeck';
 import ThemedTitle from '../components/theme/ThemedTitle';
 import ThemedField from '../components/theme/ThemedField';
 import type { Track } from '../types';
@@ -77,7 +78,7 @@ export default function PlayerSetup() {
         // zusätzliche Songs, der outOfTracks-Fallback fängt ein zu kurzes Deck ab).
         const targetCards =
           settings.mode === 'vinyl-uno'
-            ? settings.startingHandSize * Math.max(2, list.length)
+            ? vinylHandSize(Math.max(2, list.length)) * Math.max(2, list.length)
             : settings.winCondition.type === 'cards'
               ? settings.winCondition.n
               : 10;
@@ -194,7 +195,7 @@ export default function PlayerSetup() {
             {
               id: 'vinyl-uno' as const,
               label: 'Vinyl! 🔄',
-              hint: 'UNO-inspiriert: alle starten mit einer Hand voll Songs. Richtig = Karte weg, falsch = Karte dazu, plus Zufalls-Ereignisse. Wer zuerst leer ist, gewinnt.',
+              hint: 'Echtes Kartenspiel: jede*r hat eine Hand aus dem 32er-Deck (Reverse, Skip, Zieh-1/2, Wunschkarte, Tausch, 2-für-1). Vor dem Song eine Karte wählen — bei Treffer wird ihr Effekt gültig, sonst 1 Strafkarte. Wer zuerst leer ist, gewinnt.',
             },
           ]
         ).map((m) => {
@@ -265,22 +266,13 @@ export default function PlayerSetup() {
         )}
         {settings.mode === 'vinyl-uno' && (
           <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm" style={{ background: t.background }}>
-            <span>Starthand-Größe</span>
-            <div className="flex items-center gap-3">
-              <button
-                className="btn-ghost px-3 py-1"
-                onClick={() => setSettings({ startingHandSize: Math.max(4, settings.startingHandSize - 1) })}
-              >
-                −
-              </button>
-              <span className="w-6 text-center font-mono font-bold">{settings.startingHandSize}</span>
-              <button
-                className="btn-ghost px-3 py-1"
-                onClick={() => setSettings({ startingHandSize: Math.min(12, settings.startingHandSize + 1) })}
-              >
-                +
-              </button>
-            </div>
+            <span>
+              Starthand-Größe
+              <span className="block text-xs" style={{ color: t.textMuted }}>
+                Richtet sich nach der Spieleranzahl ({list.length})
+              </span>
+            </span>
+            <span className="font-mono font-bold">{vinylHandSize(Math.max(2, list.length))}</span>
           </div>
         )}
       </section>

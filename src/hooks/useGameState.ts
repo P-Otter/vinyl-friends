@@ -8,7 +8,7 @@ import type {
   Player,
   PlacementResult,
   Track,
-  VinylEvent,
+  VinylCard,
 } from '../types';
 import {
   insertCard,
@@ -18,6 +18,7 @@ import {
   validatedCount,
 } from '../lib/scoring';
 import { fuzzyMatches, fuzzyMatchesArtist } from '../lib/fuzzy-match';
+import { buildVinylDeck, drawVinylCard, vinylHandSize } from '../lib/vinylDeck';
 
 const PLAYER_COLORS = [
   '#ef4444', // rot
@@ -46,7 +47,6 @@ export function defaultSettings(): GameSettings {
     allowExplicit: true,
     snippetMode: { enabled: false, lengthSec: 30 },
     randomOffset: true,
-    startingHandSize: 7,
     requiredMastered: 3,
     masteryThreshold: 2,
   };
@@ -92,46 +92,100 @@ export function decadesInQueue(queue: Track[]): number[] {
   );
 }
 
-/** Zufälliges "Vinyl!"-Ereignis auslösen (Vinyl!-Modus) und auf die Spieler
- *  anwenden. Gibt das Ereignis (fürs Reveal) + die aktualisierten Spieler zurück. */
-function rollVinylEvent(
+/**
+ * "Vinyl!": löst die gespielte Handkarte auf, nachdem die Platzierungs-
+ * Korrektheit feststeht. Bei Treffer wird der Karteneffekt gültig (siehe
+ * Kartentabelle in vinylDeck.ts), bei Fehlschlag verfällt er und die aktive
+ * Person zieht 1 Strafkarte. Die gespielte Karte wandert so oder so in die
+ * Ablage. Reine Funktion — arbeitet nur mit dem übergebenen State-Ausschnitt.
+ */
+function resolveVinylCardPlay(
   players: Player[],
-  activePlayerId: string,
-): { event: VinylEvent | undefined; players: Player[] } {
-  // 1-von-6-Chance, nur als Bonus-Twist nach einem Treffer — kein Doppel-Nachteil.
-  if (Math.random() >= 1 / 6) return { event: undefined, players };
-  const others = players.filter((p) => p.id !== activePlayerId);
-  if (others.length === 0) return { event: undefined, players };
+  deck: VinylCard[],
+  discard: VinylCard[],
+  direction: 1 | -1,
+  playerId: string,
+  card: VinylCard,
+  correct: boolean,
+): {
+  players: Player[];
+  deck: VinylCard[];
+  discard: VinylCard[];
+  direction: 1 | -1;
+  targetId?: string;
+  bonusRound: boolean;
+} {
+  // Gespielte Karte verlässt so oder so die Hand — Effekt entscheidet nur, ob
+  // sie ZUSÄTZLICH etwas bewirkt (siehe unten). Muss VOR allen draw()-Aufrufen
+  // passieren, sonst würde ein Strafzug für dieselbe Person die eben entfernte
+  // Karte aus einer veralteten Hand-Referenz wiederherstellen.
+  let nextPlayers = players.map((p) =>
+    p.id === playerId ? { ...p, hand: (p.hand ?? []).filter((c) => c.id !== card.id) } : p,
+  );
+  let nextDeck = deck;
+  let nextDiscard = discard;
+  let nextDirection = direction;
+  let targetId: string | undefined;
+  let bonusRound = false;
 
-  const kinds: VinylEvent['kind'][] = ['curse', 'swap', 'purge'];
-  const kind = kinds[Math.floor(Math.random() * kinds.length)];
-  const target = others[Math.floor(Math.random() * others.length)];
-
-  if (kind === 'purge') {
-    return {
-      event: { kind },
-      players: players.map((p) => ({ ...p, handSize: Math.max(0, (p.handSize ?? 0) - 1) })),
-    };
-  }
-  if (kind === 'curse') {
-    return {
-      event: { kind, targetId: target.id },
-      players: players.map((p) =>
-        p.id === target.id ? { ...p, handSize: (p.handSize ?? 0) + 2 } : p,
-      ),
-    };
-  }
-  // swap: Handgröße von aktivem Spieler und Zufallsgegner tauschen.
-  const active = players.find((p) => p.id === activePlayerId);
-  if (!active) return { event: undefined, players };
-  return {
-    event: { kind, targetId: target.id },
-    players: players.map((p) => {
-      if (p.id === active.id) return { ...p, handSize: target.handSize ?? 0 };
-      if (p.id === target.id) return { ...p, handSize: active.handSize ?? 0 };
-      return p;
-    }),
+  const draw = (id: string, n: number) => {
+    for (let i = 0; i < n; i++) {
+      const res = drawVinylCard(nextDeck, nextDiscard);
+      nextDeck = res.deck;
+      nextDiscard = res.discard;
+      if (!res.card) break; // alle 32 Karten sind gerade in Händen — Zug verpufft
+      const drawn = res.card;
+      nextPlayers = nextPlayers.map((p) => (p.id === id ? { ...p, hand: [...(p.hand ?? []), drawn] } : p));
+    }
   };
+  const activeIdx = players.findIndex((p) => p.id === playerId);
+  const targetByOffset = (offset: number) => players[(activeIdx + offset * direction + players.length) % players.length];
+
+  if (correct) {
+    switch (card.type) {
+      case 'reverse':
+        nextDirection = direction === 1 ? -1 : 1;
+        break;
+      case 'skip':
+        targetId = players.length > 1 ? targetByOffset(1).id : undefined;
+        break;
+      case 'draw1':
+        targetId = players.length > 1 ? targetByOffset(1).id : undefined;
+        if (targetId) draw(targetId, 1);
+        break;
+      case 'draw2':
+        targetId = players.length > 1 ? targetByOffset(1).id : undefined;
+        if (targetId) draw(targetId, 2);
+        break;
+      case 'swap-hand': {
+        const others = players.filter((p) => p.id !== playerId);
+        if (others.length > 0) {
+          const target = others[Math.floor(Math.random() * others.length)];
+          targetId = target.id;
+          // "me" MUSS aus nextPlayers kommen (schon ohne die gespielte Karte),
+          // sonst würde die eben abgelegte Karte mit hinübergetauscht.
+          const me = nextPlayers.find((p) => p.id === playerId);
+          nextPlayers = nextPlayers.map((p) => {
+            if (p.id === playerId) return { ...p, hand: target.hand ?? [] };
+            if (p.id === target.id) return { ...p, hand: me?.hand ?? [] };
+            return p;
+          });
+        }
+        break;
+      }
+      case 'double':
+        bonusRound = true;
+        break;
+      case 'wish-decade':
+      case 'normal':
+        break;
+    }
+  } else {
+    draw(playerId, 1);
+  }
+
+  nextDiscard = [...nextDiscard, card];
+  return { players: nextPlayers, deck: nextDeck, discard: nextDiscard, direction: nextDirection, targetId, bonusRound };
 }
 
 /** "Artist & Titel raten": ein Jahr/Titel/Artist-Tipp gegen die echte Karte bewertet.
@@ -196,6 +250,13 @@ type GameStore = GameState & {
   skipTrack: () => void;
   resetGame: () => void;
 
+  // "Vinyl!": Privacy-Gate bestätigen, dann eine Handkarte für diese Runde wählen
+  // (bei "wish-decade" zusätzlich ein Jahrzehnt — zieht den passenden Song vor).
+  confirmScreenTurned: () => void;
+  selectVinylCard: (playerId: string, cardId: string, wishDecade?: number) => void;
+  // "Vinyl!": Bonusrunde durch "2-für-1" fortsetzen — kein neuer Kartenwahl-Schritt.
+  continueVinylBonusRound: () => void;
+
   // "Wessen Liebling?"
   awardFaveGuess: (playerId: string) => void;
 
@@ -246,7 +307,28 @@ export const useGameState = create<GameStore>()(
       setPlayers: (players) => set({ players }),
 
       startGame: (queue) => {
-        const { mode, startingHandSize } = get().settings;
+        const { mode } = get().settings;
+        const players = get().players;
+        // "Vinyl!": frisches 32-Karten-Deck bauen + austeilen (Handgröße richtet
+        // sich nach der Spielerzahl, damit das Deck fürs Austeilen immer reicht).
+        let vinylDeck: VinylCard[] | undefined;
+        let handByPlayer = new Map<string, VinylCard[]>();
+        if (mode === 'vinyl-uno') {
+          let deck = buildVinylDeck();
+          const size = vinylHandSize(players.length);
+          for (const p of players) {
+            const hand: VinylCard[] = [];
+            for (let i = 0; i < size; i++) {
+              const drawn = deck[0];
+              if (!drawn) break;
+              hand.push(drawn);
+              deck = deck.slice(1);
+            }
+            handByPlayer.set(p.id, hand);
+          }
+          vinylDeck = deck;
+        }
+
         set({
           phase: 'playing',
           queue,
@@ -255,7 +337,12 @@ export const useGameState = create<GameStore>()(
           round: 1,
           lastResult: undefined,
           startedAt: Date.now(),
-          players: get().players.map((p) => ({
+          vinylDeck,
+          vinylDiscard: mode === 'vinyl-uno' ? [] : undefined,
+          vinylDirection: mode === 'vinyl-uno' ? 1 : undefined,
+          pendingVinylCard: undefined,
+          vinylBonusRoundActive: false,
+          players: players.map((p) => ({
             ...p,
             cards: [],
             attempts: 0,
@@ -265,7 +352,7 @@ export const useGameState = create<GameStore>()(
             completedSets: 0,
             unvalidatedCardIds: [],
             bonusBank: 0,
-            handSize: mode === 'vinyl-uno' ? startingHandSize : undefined,
+            hand: mode === 'vinyl-uno' ? handByPlayer.get(p.id) : undefined,
           })),
         });
       },
@@ -281,10 +368,10 @@ export const useGameState = create<GameStore>()(
         const sorted = sortByYear(player.cards);
         const correct = isPlacementCorrect(sorted, track, insertIndex);
         const decade = mode === 'plattenboerse' && correct ? decadeOf(track.releaseYear) : undefined;
+        const isBonusRound = mode === 'vinyl-uno' && state.vinylBonusRoundActive;
 
         let players = state.players.map((p) => {
           if (p.id !== playerId) return p;
-          const handDelta = mode === 'vinyl-uno' ? (correct ? -1 : 1) : 0;
           return {
             ...p,
             attempts: p.attempts + 1,
@@ -294,22 +381,74 @@ export const useGameState = create<GameStore>()(
               decade !== undefined
                 ? { ...p.decadeTokens, [decade]: (p.decadeTokens?.[decade] ?? 0) + 1 }
                 : p.decadeTokens,
-            handSize: p.handSize !== undefined ? Math.max(0, p.handSize + handDelta) : p.handSize,
           };
         });
 
-        // "Vinyl!": nur nach einem Treffer ein Zufalls-Ereignis auslösen (Bonus-Twist,
-        // kein Doppel-Nachteil bei ohnehin schon verpasster Platzierung).
-        let vinylEvent: VinylEvent | undefined;
-        if (mode === 'vinyl-uno' && correct) {
-          const rolled = rollVinylEvent(players, playerId);
-          vinylEvent = rolled.event;
-          players = rolled.players;
+        // "Vinyl!": die gespielte Handkarte auflösen — außer wir sind gerade in
+        // der kartenlosen Bonusrunde eines erfolgreichen "2-für-1".
+        let vinylPlay: PlacementResult['vinylPlay'];
+        let vinylDeck = state.vinylDeck;
+        let vinylDiscard = state.vinylDiscard;
+        let vinylDirection = state.vinylDirection ?? 1;
+        if (mode === 'vinyl-uno' && !isBonusRound && state.pendingVinylCard?.card) {
+          const card = state.pendingVinylCard.card;
+          const resolved = resolveVinylCardPlay(
+            players,
+            vinylDeck ?? [],
+            vinylDiscard ?? [],
+            vinylDirection,
+            playerId,
+            card,
+            correct,
+          );
+          players = resolved.players;
+          vinylDeck = resolved.deck;
+          vinylDiscard = resolved.discard;
+          vinylDirection = resolved.direction;
+          vinylPlay = {
+            card,
+            effectApplied: correct,
+            targetId: resolved.targetId,
+            wishDecade: state.pendingVinylCard.wishDecade,
+          };
         }
 
-        const result: PlacementResult = { track, playerId, insertIndex, correct, decade, vinylEvent };
-        set({ phase: 'reveal', lastResult: result, players });
+        const result: PlacementResult = { track, playerId, insertIndex, correct, decade, vinylPlay };
+        set({
+          phase: 'reveal',
+          lastResult: result,
+          players,
+          vinylDeck,
+          vinylDiscard,
+          vinylDirection,
+          pendingVinylCard: undefined,
+          vinylBonusRoundActive: vinylPlay?.card.type === 'double' && correct,
+        });
       },
+
+      selectVinylCard: (playerId, cardId, wishDecade) => {
+        const state = get();
+        if (!state.pendingVinylCard?.screenTurned) return; // erst Privacy-Gate bestätigen
+        const player = state.players.find((p) => p.id === playerId);
+        const card = player?.hand?.find((c) => c.id === cardId);
+        if (!card) return;
+
+        let queue = state.queue;
+        if (card.type === 'wish-decade' && wishDecade !== undefined) {
+          const rest = queue.slice(state.currentTrackIndex);
+          const matchOffset = rest.findIndex((t) => decadeOf(t.releaseYear) === wishDecade);
+          if (matchOffset > 0) {
+            const actualIdx = state.currentTrackIndex + matchOffset;
+            queue = [...queue];
+            const [wished] = queue.splice(actualIdx, 1);
+            queue.splice(state.currentTrackIndex, 0, wished);
+          }
+        }
+
+        set({ queue, pendingVinylCard: { card, wishDecade, screenTurned: true } });
+      },
+
+      confirmScreenTurned: () => set({ pendingVinylCard: { card: null, screenTurned: true } }),
 
       awardFaveGuess: (playerId) => {
         set((s) => ({
@@ -353,6 +492,16 @@ export const useGameState = create<GameStore>()(
           lastResult: { ...result, tuneRoundFinished: true, finalOwnerId: ownerId },
           players: applyTuneResolution(state.players, result, ownerId, validated, bonusWinnerId),
         });
+      },
+
+      continueVinylBonusRound: () => {
+        const state = get();
+        const nextIndex = advanceTrack(state);
+        if (nextIndex >= state.queue.length) {
+          set({ phase: 'finished', lastResult: undefined });
+          return;
+        }
+        set({ phase: 'playing', currentTrackIndex: nextIndex, lastResult: undefined });
       },
 
       tradeTokens: (fromId, fromDecade, toId, toDecade) => {
@@ -429,7 +578,7 @@ export const useGameState = create<GameStore>()(
               ? p.cards.length >= win.n && validatedCount(p) >= state.settings.requiredMastered
               : p.cards.length >= win.n,
           );
-        const handEmpty = mode === 'vinyl-uno' && state.players.some((p) => (p.handSize ?? 0) <= 0);
+        const handEmpty = mode === 'vinyl-uno' && state.players.some((p) => (p.hand?.length ?? 0) <= 0);
         const timeUp =
           win.type === 'time' &&
           state.startedAt !== undefined &&
@@ -442,7 +591,19 @@ export const useGameState = create<GameStore>()(
           return;
         }
 
-        const nextPlayerIdx = (state.currentPlayerIdx + 1) % state.players.length;
+        // "Vinyl!": Zugrichtung + ein anstehendes Skip (durch "skip" oder "draw2")
+        // berücksichtigen — sonst normaler Schritt von 1.
+        const skippedEffect = state.lastResult?.vinylPlay;
+        const advanceBy =
+          skippedEffect?.effectApplied && (skippedEffect.card.type === 'skip' || skippedEffect.card.type === 'draw2')
+            ? 2
+            : 1;
+        const direction = state.vinylDirection ?? 1;
+        const playerCount = state.players.length;
+        const nextPlayerIdx =
+          mode === 'vinyl-uno'
+            ? (state.currentPlayerIdx + advanceBy * direction + playerCount * 2) % playerCount
+            : (state.currentPlayerIdx + 1) % playerCount;
         set({
           phase: 'playing',
           currentTrackIndex: nextIndex,
@@ -471,6 +632,11 @@ export const useGameState = create<GameStore>()(
           round: 0,
           lastResult: undefined,
           startedAt: undefined,
+          vinylDeck: undefined,
+          vinylDiscard: undefined,
+          vinylDirection: undefined,
+          pendingVinylCard: undefined,
+          vinylBonusRoundActive: false,
           players: get().players.map((p) => ({
             ...p,
             cards: [],
@@ -481,7 +647,7 @@ export const useGameState = create<GameStore>()(
             completedSets: 0,
             unvalidatedCardIds: [],
             bonusBank: 0,
-            handSize: undefined,
+            hand: undefined,
           })),
         }),
 
@@ -510,6 +676,11 @@ export const useGameState = create<GameStore>()(
         currentPlayerIdx: s.currentPlayerIdx,
         round: s.round,
         startedAt: s.startedAt,
+        vinylDeck: s.vinylDeck,
+        vinylDiscard: s.vinylDiscard,
+        vinylDirection: s.vinylDirection,
+        pendingVinylCard: s.pendingVinylCard,
+        vinylBonusRoundActive: s.vinylBonusRoundActive,
       }),
     },
   ),

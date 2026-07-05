@@ -33,9 +33,9 @@ export type Player = {
   // key = Dekaden-Start (z.B. 1980), tauschbar zwischen Spielern.
   decadeTokens?: Record<number, number>;
   completedSets?: number; // eingelöste volle Dekaden-Sätze
-  // Vinyl! (UNO-inspiriert): Hand schrumpft bei Treffern, wächst bei Fehlern —
-  // wer zuerst auf 0 ist, gewinnt (umgekehrt zum Sammel-Prinzip der anderen Modi).
-  handSize?: number;
+  // Vinyl!: echte Handkarten aus dem 32er-Deck. Wer zuerst leer ist, gewinnt
+  // (umgekehrt zum Sammel-Prinzip der anderen Modi). Größe = hand.length.
+  hand?: VinylCard[];
   // "Artist & Titel raten": platzierte, aber noch nicht validierte Karten (< 2/3
   // Jahr/Titel/Artist richtig) — zählen NICHT zum Sieg, bis validiert (selbst
   // oder durch eine gebankte fremde Bonus-Validierung, siehe bonusBank).
@@ -76,7 +76,6 @@ export type GameSettings = {
   allowExplicit: boolean;
   snippetMode: { enabled: boolean; lengthSec: number };
   randomOffset: boolean;
-  startingHandSize: number; // nur "vinyl-uno": Kartenzahl zu Spielbeginn
   // "Artist & Titel raten": Sieg braucht winCondition.n TOTAL platzierte Karten
   // UND mindestens requiredMastered davon validiert (2 unabhängige Zahlen, wie
   // in der iOS-App) — nicht nur eine Gesamtzahl validierter Karten.
@@ -111,11 +110,20 @@ export type StealAttempt = {
   guess: BonusGuessResult;
 };
 
-// "Vinyl!": zufälliges Ereignis nach einer Platzierung, fürs Reveal-Overlay.
-export type VinylEvent =
-  | { kind: 'curse'; targetId: string } // Nachbar zieht 2
-  | { kind: 'swap'; targetId: string } // Handgröße mit Zufallsgegner tauschen
-  | { kind: 'purge' }; // alle -1 (min. 0)
+// "Vinyl!": echtes 32-Karten-Deck statt Zufalls-Twist. Jede Handkarte wird vor
+// dem Hören gewählt — bei korrekter Platzierung wird ihr Effekt gültig, sonst
+// verfällt er (Karte trotzdem abgelegt + 1 Strafkarte gezogen).
+export type VinylCardType =
+  | 'normal'
+  | 'reverse'
+  | 'skip'
+  | 'draw1'
+  | 'draw2'
+  | 'wish-decade'
+  | 'swap-hand'
+  | 'double';
+
+export type VinylCard = { id: string; type: VinylCardType };
 
 // Ergebnis einer Platzierung, fürs Reveal-Overlay festgehalten.
 export type PlacementResult = {
@@ -128,7 +136,13 @@ export type PlacementResult = {
   tuneRoundFinished?: boolean; // nur "name-that-tune": Host hat "fertig, auflösen" gewählt
   finalOwnerId?: string; // nur "name-that-tune": wer die Karte nach Steal-Auflösung bekommt
   decade?: number; // nur "plattenboerse": Dekade der gerade verdienten Marke
-  vinylEvent?: VinylEvent; // nur "vinyl-uno": ausgelöstes Zufallsereignis
+  // nur "vinyl-uno": welche Karte gespielt wurde und ob ihr Effekt griff
+  vinylPlay?: {
+    card: VinylCard;
+    effectApplied: boolean; // true = richtig platziert, Effekt gültig
+    targetId?: string; // betroffene Person bei skip/draw1/draw2/swap-hand
+    wishDecade?: number; // gewähltes Jahrzehnt bei wish-decade
+  };
 };
 
 export type GameState = {
@@ -141,6 +155,16 @@ export type GameState = {
   round: number;
   lastResult?: PlacementResult;
   startedAt?: number; // epoch ms, für Zeit-Win-Condition
+  // nur "vinyl-uno":
+  vinylDeck?: VinylCard[]; // Nachziehstapel
+  vinylDiscard?: VinylCard[]; // Ablagestapel — wird neu gemischt, wenn vinylDeck leer ist
+  vinylDirection?: 1 | -1; // Zugreihenfolge, von "reverse" umgedreht
+  pendingVinylCard?: {
+    card: VinylCard | null; // null zwischen Privacy-Gate und tatsächlicher Kartenwahl
+    wishDecade?: number;
+    screenTurned: boolean; // Privacy-Gate bestätigt -> Hand darf gezeigt werden
+  };
+  vinylBonusRoundActive?: boolean; // "2-für-1": naechste Runde braucht keine neue Kartenwahl
 };
 
 export type Theme = {

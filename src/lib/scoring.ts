@@ -104,7 +104,7 @@ export function ranking(players: Player[], mode?: GameMode): PlayerStats[] {
     validated: mode === 'name-that-tune' ? validatedCount(p) : undefined,
     accuracy: p.attempts > 0 ? p.hits / p.attempts : 0,
     bonusPoints: p.bonusPoints ?? 0,
-    handSize: p.handSize,
+    handSize: p.hand?.length,
   }));
 
   if (mode === 'vinyl-uno') {

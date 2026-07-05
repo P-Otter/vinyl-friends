@@ -4,7 +4,7 @@ import { useTheme } from '../hooks/useTheme';
 import Confetti from './theme/Confetti';
 import FaveGuessRow from './FaveGuessRow';
 import TuneRevealFlow from './TuneRevealFlow';
-import VinylEventBanner from './VinylEventBanner';
+import VinylCardResult from './VinylCardResult';
 
 type Props = {
   result: PlacementResult;
@@ -93,13 +93,7 @@ export default function RevealOverlay({
               className="mt-6 rounded-xl px-4 py-3 font-bold"
               style={{ background: `${stampColor}26`, color: stampColor }}
             >
-              {mode === 'vinyl-uno'
-                ? correct
-                  ? '✓ Richtig! Eine Karte weniger auf der Hand'
-                  : '✗ Falsch — eine Karte dazugezogen'
-                : correct
-                  ? '✓ Richtig platziert! +1 Karte'
-                  : '✗ Falsch — keine Karte'}
+              {correct ? '✓ Richtig platziert! +1 Karte' : '✗ Falsch — keine Karte'}
             </div>
           )}
 
@@ -133,8 +127,8 @@ export default function RevealOverlay({
             </div>
           )}
 
-          {mode === 'vinyl-uno' && result.vinylEvent && (
-            <VinylEventBanner event={result.vinylEvent} players={players} />
+          {mode === 'vinyl-uno' && result.vinylPlay && (
+            <VinylCardResult vinylPlay={result.vinylPlay} players={players} />
           )}
 
           {!tunePending && (

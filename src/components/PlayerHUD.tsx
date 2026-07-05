@@ -25,7 +25,8 @@ function PlayerHUD({
     <div className="flex flex-wrap gap-3">
       {players.map((p) => {
         const active = p.id === currentPlayerId;
-        const vinylCall = isVinylUno && p.handSize === 1;
+        const handCount = p.hand?.length ?? 0;
+        const vinylCall = isVinylUno && handCount === 1;
         const bank = p.bonusBank ?? 0;
         return (
           <div
@@ -41,7 +42,7 @@ function PlayerHUD({
             <span>{p.name}</span>
             {vinylCall && <span style={{ color: t.highlight }}>🎉 Vinyl!</span>}
             <span style={{ color: t.textMuted }}>
-              {isVinylUno ? `${p.handSize ?? 0} auf der Hand` : `${p.cards.length}/${targetCards}`}
+              {isVinylUno ? `${handCount} auf der Hand` : `${p.cards.length}/${targetCards}`}
             </span>
             {isNameThatTune && (
               <span style={{ color: t.highlight }}>
