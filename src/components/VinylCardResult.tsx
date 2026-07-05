@@ -20,7 +20,10 @@ export default function VinylCardResult({ vinylPlay, players }: Props) {
   } else {
     switch (vinylPlay.card.type) {
       case 'reverse':
-        text = `${info.emoji} Reverse! Die Zugrichtung dreht sich um.`;
+        text =
+          players.length === 2
+            ? `${info.emoji} Reverse! Bei 2 Spielern wie ein Skip — du bist direkt nochmal dran.`
+            : `${info.emoji} Reverse! Die Zugrichtung dreht sich um.`;
         break;
       case 'skip':
         text = `${info.emoji} Skip! ${nameOf(vinylPlay.targetId)} setzt aus.`;

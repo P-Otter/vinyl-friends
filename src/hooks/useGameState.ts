@@ -608,14 +608,20 @@ export const useGameState = create<GameStore>()(
         }
 
         // "Vinyl!": Zugrichtung + ein anstehendes Skip (durch "skip" oder "draw2")
-        // berücksichtigen — sonst normaler Schritt von 1.
+        // berücksichtigen — sonst normaler Schritt von 1. Bei GENAU 2 Spielern
+        // zählt auch "reverse" als Skip (Standard-UNO-Regel: die Zugrichtung
+        // umzudrehen ergibt bei nur 2 Personen keinen Unterschied, deshalb bekommt
+        // die aktive Person stattdessen direkt noch eine Runde).
         const skippedEffect = state.lastResult?.vinylPlay;
+        const playerCount = state.players.length;
         const advanceBy =
-          skippedEffect?.effectApplied && (skippedEffect.card.type === 'skip' || skippedEffect.card.type === 'draw2')
+          skippedEffect?.effectApplied &&
+          (skippedEffect.card.type === 'skip' ||
+            skippedEffect.card.type === 'draw2' ||
+            (skippedEffect.card.type === 'reverse' && playerCount === 2))
             ? 2
             : 1;
         const direction = state.vinylDirection ?? 1;
-        const playerCount = state.players.length;
         const nextPlayerIdx =
           mode === 'vinyl-uno'
             ? (state.currentPlayerIdx + advanceBy * direction + playerCount * 2) % playerCount
